@@ -1,0 +1,64 @@
+import { NextRequest, NextResponse } from 'next/server';
+import { readdir, unlink, stat } from 'fs/promises';
+import { existsSync } from 'fs';
+import path from 'path';
+
+export async function GET(request: NextRequest) {
+  try {
+    // Authenticate the request
+    const authHeader = request.headers.get('authorization');
+    const url = new URL(request.url);
+    const queryToken = url.searchParams.get('token');
+    
+    const cronToken = process.env.CRON_TOKEN || 'local-fallback-cleanup-token';
+    const isAuthorized = 
+      (authHeader === `Bearer ${cronToken}`) || 
+      (queryToken === cronToken);
+
+    if (!isAuthorized) {
+      return NextResponse.json(
+        { error: 'Unauthorized. Provide a valid Bearer token or token query parameter.' },
+        { status: 401 }
+      );
+    }
+    const tempDir = path.join(process.cwd(), 'public', 'temp');
+
+    if (!existsSync(tempDir)) {
+      return NextResponse.json({
+        success: true,
+        message: 'Temp directory does not exist',
+        deleted: 0,
+      });
+    }
+
+    const files = await readdir(tempDir);
+    const now = Date.now();
+    const sevenDaysInMs = 7 * 24 * 60 * 60 * 1000; // 7 days
+    let deletedCount = 0;
+
+    for (const file of files) {
+      const filePath = path.join(tempDir, file);
+      const stats = await stat(filePath);
+      const fileAge = now - stats.mtimeMs;
+
+      // Delete if older than 7 days
+      if (fileAge > sevenDaysInMs) {
+        await unlink(filePath);
+        deletedCount++;
+        console.log(`Deleted old image: ${file}`);
+      }
+    }
+
+    return NextResponse.json({
+      success: true,
+      message: `Cleaned up ${deletedCount} old images`,
+      deleted: deletedCount,
+    });
+  } catch (error: any) {
+    console.error('Cleanup error:', error);
+    return NextResponse.json(
+      { error: error.message || 'Failed to cleanup images' },
+      { status: 500 }
+    );
+  }
+}
