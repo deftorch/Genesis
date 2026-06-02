@@ -2787,17 +2787,31 @@ const GenesisApp = () => {
                               <h3 className="font-semibold text-sm truncate flex-1 text-gray-800 dark:text-gray-200">
                                 {artifact.chatTitle}
                               </h3>
-                              <span
-                                className={`text-[10px] px-2 py-0.5 rounded font-medium select-none ${(artifact.renderer || "p5") === "d3" ? "bg-orange-100 text-orange-700 dark:bg-orange-500/10 dark:text-orange-400" : (artifact.renderer || "p5") === "svg" ? "bg-teal-100 text-teal-700 dark:bg-teal-500/10 dark:text-teal-400" : (artifact.renderer || "p5") === "mermaid" ? "bg-blue-100 text-blue-700 dark:bg-blue-500/10 dark:text-blue-400" : "bg-purple-100 text-purple-700 dark:bg-purple-500/10 dark:text-purple-400"}`}
-                              >
-                                {(artifact.renderer || "p5") === "d3"
-                                  ? "D3.js"
-                                  : (artifact.renderer || "p5") === "svg"
-                                    ? "SVG"
-                                    : (artifact.renderer || "p5") === "mermaid"
-                                      ? "Mermaid"
-                                      : "p5.js"}
-                              </span>
+                              {preferences.developerMode ? (
+                                <span
+                                  className={`text-[10px] px-2 py-0.5 rounded font-medium select-none ${(artifact.renderer || "p5") === "d3" ? "bg-orange-100 text-orange-700 dark:bg-orange-500/10 dark:text-orange-400" : (artifact.renderer || "p5") === "svg" ? "bg-teal-100 text-teal-700 dark:bg-teal-500/10 dark:text-teal-400" : (artifact.renderer || "p5") === "mermaid" ? "bg-blue-100 text-blue-700 dark:bg-blue-500/10 dark:text-blue-400" : "bg-purple-100 text-purple-700 dark:bg-purple-500/10 dark:text-purple-400"}`}
+                                >
+                                  {(artifact.renderer || "p5") === "d3"
+                                    ? "D3.js"
+                                    : (artifact.renderer || "p5") === "svg"
+                                      ? "SVG"
+                                      : (artifact.renderer || "p5") === "mermaid"
+                                        ? "Mermaid"
+                                        : "p5.js"}
+                                </span>
+                              ) : (
+                                <div className="flex items-center justify-center p-1.5 rounded-lg bg-gray-100 dark:bg-white/5">
+                                  {(artifact.renderer || "p5") === "d3" ? (
+                                    <BarChart3 size={14} className="text-[#e27a4d]" />
+                                  ) : (artifact.renderer || "p5") === "svg" ? (
+                                    <Shapes size={14} className="text-[#3b82f6]" />
+                                  ) : (artifact.renderer || "p5") === "mermaid" ? (
+                                    <Network size={14} className="text-[#8b5cf6]" />
+                                  ) : (
+                                    <Layout size={14} className="text-[#10b981]" />
+                                  )}
+                                </div>
+                              )}
                             </div>
                             <p className="text-xs text-gray-400 dark:text-gray-500">
                               {formatDate(artifact.createdAt)}
@@ -3303,10 +3317,17 @@ const GenesisApp = () => {
                   <div className="border-b border-[#1e468c]/10 dark:border-white/10 p-4 flex items-center justify-between flex-shrink-0 bg-transparent select-none">
                     {/* Left: Active File Tab */}
                     <div className="flex items-center gap-2 px-3 py-1 rounded-md text-xs font-medium backdrop-blur-md preview-panel-filetab">
-                      <FileCode2
-                        size={13}
-                        className="text-gray-500 dark:text-[#7aaae8]"
-                      />
+                      {preferences.developerMode ? (
+                        <FileCode2 size={13} className="text-gray-500 dark:text-[#7aaae8]" />
+                      ) : activeRenderer === "d3" ? (
+                        <BarChart3 size={13} className="text-[#e27a4d]" />
+                      ) : activeRenderer === "svg" ? (
+                        <Shapes size={13} className="text-[#3b82f6]" />
+                      ) : activeRenderer === "mermaid" ? (
+                        <Network size={13} className="text-[#8b5cf6]" />
+                      ) : (
+                        <Layout size={13} className="text-[#10b981]" />
+                      )}
                       <span>
                         {preferences.developerMode
                           ? activeRenderer === "svg"
