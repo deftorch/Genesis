@@ -1434,7 +1434,7 @@ const GenesisApp = () => {
     : [];
 
   return (
-    <div className="flex h-screen bg-white dark:bg-[#000000] text-gray-900 dark:text-white relative overflow-hidden transition-colors duration-300">
+    <div className="flex h-[100dvh] bg-white dark:bg-[#000000] text-gray-900 dark:text-white relative overflow-hidden transition-colors duration-300">
       {/* Global hidden file input for image uploads */}
       <input
         ref={fileInputRef}
@@ -1518,38 +1518,6 @@ const GenesisApp = () => {
               </button>
             </div>
 
-            {/* Account & Settings (Moved to Top) */}
-            <div className="flex items-center justify-between mb-4 pb-4 border-b border-gray-200 dark:border-white/10">
-              <div className="flex items-center gap-2.5 min-w-0">
-                <div className="w-8 h-8 rounded-full bg-[#0a1628] dark:bg-[#60aaff]/20 border border-[#0a1628]/20 dark:border-[#60aaff]/40 flex items-center justify-center text-xs font-bold text-white dark:text-[#60aaff] flex-shrink-0 select-none">
-                  G
-                </div>
-                <div className="min-w-0">
-                  <p className="text-sm font-medium text-gray-800 dark:text-gray-200 truncate">
-                    Genesis User
-                  </p>
-                  <p className="text-[10px] text-gray-400 dark:text-gray-500">
-                    Free plan
-                  </p>
-                </div>
-              </div>
-              <button
-                onClick={() => {
-                  setIsSettingsOpen(true);
-                  if (
-                    typeof window !== "undefined" &&
-                    window.innerWidth < 768
-                  ) {
-                    setSidebarOpen(false);
-                  }
-                }}
-                className="p-1.5 text-gray-400 hover:text-gray-700 dark:hover:text-white hover:bg-gray-100 dark:hover:bg-white/5 rounded-lg transition-all cursor-pointer flex-shrink-0"
-                title="Settings"
-              >
-                <Settings size={18} />
-              </button>
-            </div>
-
             {/* Navigation */}
             <div className="space-y-1 mb-4">
               <button
@@ -1614,7 +1582,7 @@ const GenesisApp = () => {
             </div>
 
             {/* Sidebar Content - Always show chat history */}
-            <div className="border-t border-[#1e468c]/12 dark:border-white/10 pt-4 flex-1 overflow-hidden flex flex-col">
+            <div className="border-t border-[#1e468c]/12 dark:border-white/10 pt-4 flex-1 min-h-0 overflow-hidden flex flex-col">
               <h3 className="text-xs font-semibold text-[#3a6aaa] dark:text-gray-500 mb-2 px-3 flex items-center gap-1">
                 <Clock size={12} /> RECENT CREATIONS
               </h3>
@@ -1748,6 +1716,37 @@ const GenesisApp = () => {
                   ))
                 )}
               </div>
+            </div>
+            {/* Footer - Account & Settings */}
+            <div className="border-t border-gray-200 dark:border-white/10 pt-3 flex items-center justify-between mt-auto">
+              <div className="flex items-center gap-2.5 min-w-0">
+                <div className="w-8 h-8 rounded-full bg-[#0a1628] dark:bg-[#60aaff]/20 border border-[#0a1628]/20 dark:border-[#60aaff]/40 flex items-center justify-center text-xs font-bold text-white dark:text-[#60aaff] flex-shrink-0 select-none">
+                  G
+                </div>
+                <div className="min-w-0">
+                  <p className="text-sm font-medium text-gray-800 dark:text-gray-200 truncate">
+                    Genesis User
+                  </p>
+                  <p className="text-[10px] text-gray-400 dark:text-gray-500">
+                    Free plan
+                  </p>
+                </div>
+              </div>
+              <button
+                onClick={() => {
+                  setIsSettingsOpen(true);
+                  if (
+                    typeof window !== "undefined" &&
+                    window.innerWidth < 768
+                  ) {
+                    setSidebarOpen(false);
+                  }
+                }}
+                className="p-1.5 text-gray-400 hover:text-gray-700 dark:hover:text-white hover:bg-gray-100 dark:hover:bg-white/5 rounded-lg transition-all cursor-pointer flex-shrink-0"
+                title="Settings"
+              >
+                <Settings size={18} />
+              </button>
             </div>
           </div>
         ) : (
