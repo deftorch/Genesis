@@ -5,6 +5,10 @@ test.describe('Genesis Chat Application E2E Tests', () => {
     // Clear localStorage before navigation to ensure a clean state and seed default chats
     await page.addInitScript(() => {
       window.localStorage.clear();
+      window.localStorage.setItem('settings-storage', JSON.stringify({
+        state: { preferences: { developerMode: true, theme: 'system', fontSize: 'medium', autoSave: true, showTokenCount: false, enableNotifications: true } },
+        version: 0
+      }));
     });
 
     // Intercept /api/chat requests and return a mock AI response with a code block
