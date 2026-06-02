@@ -1885,7 +1885,7 @@ const GenesisApp = () => {
                                 <p className="text-sm text-gray-400 mt-1">Create a new chat above to start working on this project.</p>
                               </div>
                             ) : (
-                              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
                                 {projectChats.map(chat => (
                                   <div
                                     key={chat.id}
@@ -1955,7 +1955,7 @@ const GenesisApp = () => {
                           </button>
                         </div>
                       ) : (
-                        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 animate-fade-in">
+                        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6 animate-fade-in">
                           {chatStore.projects.map(project => {
                             const projectChatsCount = chatStore.chats.filter(c => c.projectId === project.id).length;
                             return (
@@ -2157,7 +2157,7 @@ const GenesisApp = () => {
                       </button>
                     </div>
                   ) : (
-                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
                       {artifacts.map(artifact => (
                         <div
                           key={artifact.id}
@@ -2720,7 +2720,7 @@ const GenesisApp = () => {
                     className="w-full h-full relative overflow-hidden select-none bg-slate-900/50 dark:bg-black/35 rounded-lg"
                   >
                     {/* Floating Zoom & Pan Controls */}
-                    <div className="absolute bottom-4 right-4 z-40 flex items-center gap-1 bg-white/90 dark:bg-black/80 border border-slate-200 dark:border-white/10 p-1.5 rounded-xl shadow-lg backdrop-blur-md">
+                    <div className={`absolute right-4 z-40 flex items-center gap-1 bg-white/90 dark:bg-black/80 border border-slate-200 dark:border-white/10 p-1.5 rounded-xl shadow-lg backdrop-blur-md transition-all duration-300 ${showMobileChatInput ? 'bottom-28' : 'bottom-4'}`}>
                       <button
                         onClick={() => setPanMode(!panMode)}
                         className={`p-1.5 rounded-lg transition-colors cursor-pointer ${panMode ? 'bg-[#1a6adf] text-white' : 'hover:bg-gray-100 dark:hover:bg-white/10 text-gray-600 dark:text-gray-300'}`}
