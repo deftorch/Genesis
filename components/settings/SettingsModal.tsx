@@ -187,26 +187,27 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({ isOpen, onClose })
         </div>
       </ModalHeader>
 
-      <div className="flex min-h-[500px]">
+      <div className="flex flex-col md:flex-row min-h-[500px]">
         {/* Tabs Sidebar */}
-        <div className="w-48 border-r p-4 space-y-1">
+        <div className="w-full md:w-48 border-b md:border-b-0 md:border-r p-4 flex md:flex-col gap-2 overflow-x-auto">
           {tabs.map((tab) => (
             <button
               key={tab.id}
               onClick={() => setActiveTab(tab.id)}
               className={cn(
-                'w-full flex items-center gap-3 px-3 py-2 rounded-lg text-left transition-colors',
-                activeTab === tab.id ? 'bg-accent' : 'hover:bg-muted'
+                'flex-shrink-0 flex items-center gap-2 px-3 py-2 rounded-lg text-left transition-colors',
+                activeTab === tab.id ? 'bg-accent' : 'hover:bg-muted',
+                'md:w-full'
               )}
             >
               <tab.icon className="h-4 w-4" />
-              <span className="text-sm font-medium">{tab.label}</span>
+              <span className="text-sm font-medium whitespace-nowrap">{tab.label}</span>
             </button>
           ))}
         </div>
 
         {/* Content Area */}
-        <div className="flex-1 p-6 overflow-y-auto">
+        <div className="flex-1 p-4 md:p-6 overflow-y-auto">
           {/* General Tab */}
           {activeTab === 'general' && (
             <div className="space-y-6">
@@ -289,7 +290,7 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({ isOpen, onClose })
                   {/* Theme Selection */}
                   <div>
                     <label className="font-medium block mb-3">Theme</label>
-                    <div className="grid grid-cols-4 gap-3 mb-3">
+                    <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 mb-3">
                       {(['light', 'dark', 'system', 'custom'] as const).map((theme) => (
                         <button
                           key={theme}
@@ -337,7 +338,7 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({ isOpen, onClose })
                           </button>
                         </div>
 
-                        <div className="grid grid-cols-2 gap-4">
+                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                           <div>
                             <label className="text-sm font-medium block mb-2">Primary Color</label>
                             <input
@@ -444,7 +445,7 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({ isOpen, onClose })
                   {/* Font Size */}
                   <div>
                     <label className="font-medium block mb-3">Font Size</label>
-                    <div className="grid grid-cols-3 gap-3">
+                    <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
                       {(['small', 'medium', 'large'] as const).map((size) => (
                         <button
                           key={size}

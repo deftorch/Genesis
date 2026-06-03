@@ -48,19 +48,61 @@ const P5Canvas: React.FC<P5CanvasProps> = ({ code, width = 400, height = 400 }) 
 </head>
 <body>
   <script>
+    let mediaRecorder;
+    let recordedChunks = [];
+
     // Error handling
     window.onerror = function(msg, url, lineNo, columnNo, error) {
       document.body.innerHTML = '<div class="error"><strong>Error:</strong><br>' + msg + '</div>';
       return false;
     };
 
-    // Listen for download request from parent
+    // Listen for download and recording requests from parent
     window.addEventListener('message', function(event) {
       if (event.data === 'downloadCanvas') {
         const canvas = document.querySelector('canvas');
         if (canvas) {
           const dataURL = canvas.toDataURL('image/png');
           window.parent.postMessage({ type: 'canvasData', dataURL: dataURL }, '*');
+        }
+      } else if (event.data === 'startRecording') {
+        const canvas = document.querySelector('canvas');
+        if (canvas) {
+          recordedChunks = [];
+          let options = { mimeType: 'video/webm;codecs=vp9' };
+          if (!MediaRecorder.isTypeSupported(options.mimeType)) {
+            options = { mimeType: 'video/webm;codecs=vp8' };
+          }
+          if (!MediaRecorder.isTypeSupported(options.mimeType)) {
+            options = { mimeType: 'video/webm' };
+          }
+          try {
+            const stream = canvas.captureStream(30); // 30 FPS
+            mediaRecorder = new MediaRecorder(stream, options);
+            mediaRecorder.ondataavailable = function(e) {
+              if (e.data && e.data.size > 0) {
+                recordedChunks.push(e.data);
+              }
+            };
+            mediaRecorder.onstop = function() {
+              const blob = new Blob(recordedChunks, { type: 'video/webm' });
+              const reader = new FileReader();
+              reader.onloadend = function() {
+                window.parent.postMessage({ type: 'videoData', dataURL: reader.result }, '*');
+              };
+              reader.readAsDataURL(blob);
+            };
+            mediaRecorder.start();
+            window.parent.postMessage({ type: 'recordingStatus', status: 'started' }, '*');
+          } catch (err) {
+            window.parent.postMessage({ type: 'recordingError', error: err.message }, '*');
+          }
+        } else {
+          window.parent.postMessage({ type: 'recordingError', error: 'No canvas element found for recording' }, '*');
+        }
+      } else if (event.data === 'stopRecording') {
+        if (mediaRecorder && mediaRecorder.state !== 'inactive') {
+          mediaRecorder.stop();
         }
       }
     });
