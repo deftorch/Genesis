@@ -10,6 +10,7 @@ import {
   Send,
   Image,
   Film,
+  Video,
   Layout,
   Code,
   Wand2,
@@ -281,6 +282,12 @@ const GenesisApp = () => {
   const [selectedModel, setSelectedModel] = useState<AIModel>("gemini-3-flash");
   const [isModelDropdownOpen, setIsModelDropdownOpen] = useState(false);
   const modelDropdownRef = useRef<HTMLDivElement>(null);
+
+  // States for download options & recording
+  const [isDownloadDropdownOpen, setIsDownloadDropdownOpen] = useState(false);
+  const [isRecording, setIsRecording] = useState(false);
+  const [recordingProgress, setRecordingProgress] = useState(0);
+  const downloadDropdownRef = useRef<HTMLDivElement>(null);
 
   // States for file upload
   const [attachedImages, setAttachedImages] = useState<ImageAttachment[]>([]);
@@ -731,7 +738,7 @@ const GenesisApp = () => {
     });
   };
 
-  // Close model dropdown on outside click
+  // Close dropdowns on outside click
   useEffect(() => {
     const handleClickOutside = (event: MouseEvent) => {
       if (
@@ -739,6 +746,12 @@ const GenesisApp = () => {
         !modelDropdownRef.current.contains(event.target as Node)
       ) {
         setIsModelDropdownOpen(false);
+      }
+      if (
+        downloadDropdownRef.current &&
+        !downloadDropdownRef.current.contains(event.target as Node)
+      ) {
+        setIsDownloadDropdownOpen(false);
       }
     };
     document.addEventListener("mousedown", handleClickOutside);
@@ -972,6 +985,144 @@ const GenesisApp = () => {
     element.click();
     document.body.removeChild(element);
   };
+
+  const handleDownloadImage = () => {
+    setIsDownloadDropdownOpen(false);
+    const iframe = previewViewportRef.current?.querySelector("iframe");
+    if (iframe?.contentWindow) {
+      toast({
+        title: "Generating Image",
+        description: "Exporting canvas to PNG...",
+      });
+      iframe.contentWindow.postMessage("downloadCanvas", "*");
+    } else {
+      toast({
+        title: "Export Failed",
+        description: "Preview not ready or not loaded.",
+        variant: "destructive",
+      });
+    }
+  };
+
+  const handleStartRecording = () => {
+    setIsDownloadDropdownOpen(false);
+    const iframe = previewViewportRef.current?.querySelector("iframe");
+    if (iframe?.contentWindow) {
+      if (activeRenderer !== "p5") {
+        toast({
+          title: "Video Recording",
+          description: "Video recording is only supported for p5.js animations.",
+          variant: "destructive",
+        });
+        return;
+      }
+      iframe.contentWindow.postMessage("startRecording", "*");
+    } else {
+      toast({
+        title: "Recording Failed",
+        description: "Preview not ready or not loaded.",
+        variant: "destructive",
+      });
+    }
+  };
+
+  const handleStopRecording = () => {
+    const iframe = previewViewportRef.current?.querySelector("iframe");
+    if (iframe?.contentWindow) {
+      iframe.contentWindow.postMessage("stopRecording", "*");
+    }
+  };
+
+  // Message listener for canvas data and video data from iframes
+  useEffect(() => {
+    let recordingInterval: any;
+    
+    const handleMessage = (event: MessageEvent) => {
+      // 1. Handle Canvas Image Data
+      if (event.data?.type === "canvasData") {
+        if (event.data.dataURL) {
+          const link = document.createElement("a");
+          let filename = `genesis-${activeRenderer}-${Date.now()}.png`;
+          link.download = filename;
+          link.href = event.data.dataURL;
+          document.body.appendChild(link);
+          link.click();
+          document.body.removeChild(link);
+          
+          toast({
+            title: "Image Downloaded",
+            description: `Successfully exported to ${filename}`,
+          });
+        } else {
+          toast({
+            title: "Download Failed",
+            description: "Could not export canvas data.",
+            variant: "destructive",
+          });
+        }
+      }
+      
+      // 2. Handle Video Recording Status
+      if (event.data?.type === "recordingStatus") {
+        if (event.data.status === "started") {
+          setIsRecording(true);
+          setRecordingProgress(0);
+          
+          toast({
+            title: "Recording Started",
+            description: "Capturing p5.js canvas animation...",
+          });
+
+          // Increment recording progress timer
+          let seconds = 0;
+          recordingInterval = setInterval(() => {
+            seconds += 1;
+            setRecordingProgress(seconds);
+            if (seconds >= 10) { // Limit to 10 seconds max
+              clearInterval(recordingInterval);
+              handleStopRecording();
+            }
+          }, 1000);
+        }
+      }
+      
+      // 3. Handle Video Recording Error
+      if (event.data?.type === "recordingError") {
+        setIsRecording(false);
+        if (recordingInterval) clearInterval(recordingInterval);
+        toast({
+          title: "Recording Error",
+          description: event.data.error || "An error occurred during recording.",
+          variant: "destructive",
+        });
+      }
+      
+      // 4. Handle Video Data Result
+      if (event.data?.type === "videoData" && event.data.dataURL) {
+        setIsRecording(false);
+        if (recordingInterval) clearInterval(recordingInterval);
+        
+        const link = document.createElement("a");
+        const filename = `genesis-animation-${Date.now()}.webm`;
+        link.download = filename;
+        link.href = event.data.dataURL;
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
+        
+        toast({
+          title: "Video Downloaded",
+          description: `Successfully saved video as ${filename}`,
+        });
+      }
+    };
+
+    window.addEventListener("message", handleMessage);
+    return () => {
+      window.removeEventListener("message", handleMessage);
+      if (recordingInterval) clearInterval(recordingInterval);
+    };
+  }, [activeRenderer, toast]);
 
   const handleCopyText = (text: string) => {
     navigator.clipboard.writeText(text);
@@ -3617,13 +3768,56 @@ const GenesisApp = () => {
                           <Copy size={14} />
                         )}
                       </button>
-                      <button
-                        onClick={handleDownloadCode}
-                        className="p-1.5 rounded-md transition-all cursor-pointer preview-panel-action"
-                        title="Download code"
-                      >
-                        <Download size={14} />
-                      </button>
+                      <div className="relative" ref={downloadDropdownRef}>
+                        <button
+                          onClick={() => setIsDownloadDropdownOpen(!isDownloadDropdownOpen)}
+                          className={`p-1.5 rounded-md transition-all cursor-pointer preview-panel-action flex items-center justify-center ${isDownloadDropdownOpen ? 'bg-gray-100 dark:bg-white/10 text-white' : ''}`}
+                          title="Download options"
+                        >
+                          <Download size={14} />
+                        </button>
+                        {isDownloadDropdownOpen && (
+                          <>
+                            <div
+                              className="fixed inset-0 z-30"
+                              onClick={() => setIsDownloadDropdownOpen(false)}
+                            />
+                            <div className="absolute top-full right-0 mt-1.5 w-52 bg-white dark:bg-[#151121] border border-gray-200 dark:border-white/10 rounded-lg shadow-lg py-1.5 z-40 animate-fade-in text-gray-900 dark:text-white">
+                              <div className="px-3 py-1 text-[10px] font-semibold text-gray-400 dark:text-gray-500 uppercase tracking-wider border-b border-gray-100 dark:border-white/5 mb-1 select-none">
+                                Download As
+                              </div>
+                              <button
+                                onClick={() => {
+                                  handleDownloadCode();
+                                  setIsDownloadDropdownOpen(false);
+                                }}
+                                className="w-full text-left px-3 py-2 hover:bg-gray-100 dark:hover:bg-white/5 transition-colors flex items-center gap-2 text-xs cursor-pointer text-gray-700 dark:text-gray-300"
+                              >
+                                <FileCode2 size={13} className="text-[#60aaff]" />
+                                <span>Source Code</span>
+                              </button>
+                              
+                              <button
+                                onClick={handleDownloadImage}
+                                className="w-full text-left px-3 py-2 hover:bg-gray-100 dark:hover:bg-white/5 transition-colors flex items-center gap-2 text-xs cursor-pointer text-gray-700 dark:text-gray-300"
+                              >
+                                <Image size={13} className="text-emerald-500" />
+                                <span>Image (PNG)</span>
+                              </button>
+
+                              {activeRenderer === "p5" && (
+                                <button
+                                  onClick={handleStartRecording}
+                                  className="w-full text-left px-3 py-2 hover:bg-gray-100 dark:hover:bg-white/5 transition-colors flex items-center gap-2 text-xs cursor-pointer text-gray-700 dark:text-gray-300"
+                                >
+                                  <Video size={13} className="text-red-500" />
+                                  <span>Video Animation (WebM)</span>
+                                </button>
+                              )}
+                            </div>
+                          </>
+                        )}
+                      </div>
                     </div>
                   </div>
                 </div>
@@ -3635,6 +3829,20 @@ const GenesisApp = () => {
                     ref={previewViewportRef}
                     className="w-full h-full relative overflow-hidden select-none bg-slate-900/50 dark:bg-black/35 rounded-lg"
                   >
+                    {/* Floating Video Recording Indicator */}
+                    {isRecording && (
+                      <div className="absolute top-4 left-4 z-50 flex items-center gap-2 bg-red-500/90 text-white px-3 py-1.5 rounded-full shadow-lg backdrop-blur-sm font-medium text-xs border border-red-400 animate-pulse">
+                        <span className="w-2 h-2 rounded-full bg-white animate-ping"></span>
+                        <span>Recording Video... {recordingProgress}s / 10s</span>
+                        <button
+                          onClick={handleStopRecording}
+                          className="ml-2 px-2 py-0.5 bg-white/20 hover:bg-white/30 rounded-md text-[10px] cursor-pointer transition-colors"
+                        >
+                          Stop
+                        </button>
+                      </div>
+                    )}
+
                     {/* Floating Zoom & Pan Controls */}
                     <div
                       className={`absolute right-4 z-40 flex items-center gap-1 bg-white/90 dark:bg-black/80 border border-slate-200 dark:border-white/10 p-1.5 rounded-xl shadow-lg backdrop-blur-md transition-all duration-300 ${showMobileChatInput ? "bottom-28" : "bottom-4"}`}
