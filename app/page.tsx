@@ -65,6 +65,8 @@ import ReactMarkdown from "react-markdown";
 import { useChatStore } from "@/lib/store/chat-store";
 import { useSettingsStore } from "@/lib/store/settings-store";
 import { useToast } from "@/lib/store/toast-store";
+import { useAuthStore } from "@/lib/store/auth-store";
+import { AuthModal } from "@/components/auth/AuthModal";
 import { formatDate, formatMessageTimestamp } from "@/lib/utils";
 import { SettingsModal } from "@/components/settings/SettingsModal";
 import { API_CONFIG, AI_MODELS, FILE_UPLOAD_CONFIG } from "@/config/constants";
@@ -210,6 +212,13 @@ const getCategoryInfo = (renderer: RendererType, code: string = "", title: strin
 
 const GenesisApp = () => {
   const chatStore = useChatStore();
+  const { user, initialize: initializeAuth, signOut: handleSignOut } = useAuthStore();
+  const [isAuthModalOpen, setIsAuthModalOpen] = useState(false);
+
+  useEffect(() => {
+    initializeAuth();
+  }, [initializeAuth]);
+
   const { preferences } = useSettingsStore();
   const { toast } = useToast();
   const [sidebarOpen, setSidebarOpen] = useState(true);
@@ -288,6 +297,31 @@ const GenesisApp = () => {
   const [isRecording, setIsRecording] = useState(false);
   const [recordingProgress, setRecordingProgress] = useState(0);
   const downloadDropdownRef = useRef<HTMLDivElement>(null);
+  const [showDownloadSettings, setShowDownloadSettings] = useState(false);
+  const [downloadSettings, setDownloadSettings] = useState({
+    videoDuration: 10, // seconds
+    videoFps: 30, // 30 or 60
+  });
+
+  // Load download settings from localStorage on mount
+  useEffect(() => {
+    const saved = localStorage.getItem("genesis_download_settings");
+    if (saved) {
+      try {
+        setDownloadSettings(JSON.parse(saved));
+      } catch (e) {
+        // ignore
+      }
+    }
+  }, []);
+
+  const updateDownloadSettings = (newSettings: Partial<typeof downloadSettings>) => {
+    setDownloadSettings((prev) => {
+      const updated = { ...prev, ...newSettings };
+      localStorage.setItem("genesis_download_settings", JSON.stringify(updated));
+      return updated;
+    });
+  };
 
   // States for file upload
   const [attachedImages, setAttachedImages] = useState<ImageAttachment[]>([]);
@@ -1016,7 +1050,13 @@ const GenesisApp = () => {
         });
         return;
       }
-      iframe.contentWindow.postMessage("startRecording", "*");
+      iframe.contentWindow.postMessage(
+        {
+          type: "startRecording",
+          fps: downloadSettings.videoFps,
+        },
+        "*"
+      );
     } else {
       toast({
         title: "Recording Failed",
@@ -1070,7 +1110,7 @@ const GenesisApp = () => {
           
           toast({
             title: "Recording Started",
-            description: "Capturing p5.js canvas animation...",
+            description: `Capturing p5.js canvas animation at ${downloadSettings.videoFps} FPS...`,
           });
 
           // Increment recording progress timer
@@ -1078,7 +1118,7 @@ const GenesisApp = () => {
           recordingInterval = setInterval(() => {
             seconds += 1;
             setRecordingProgress(seconds);
-            if (seconds >= 10) { // Limit to 10 seconds max
+            if (seconds >= downloadSettings.videoDuration) { // Limit to custom duration
               clearInterval(recordingInterval);
               handleStopRecording();
             }
@@ -1122,7 +1162,7 @@ const GenesisApp = () => {
       window.removeEventListener("message", handleMessage);
       if (recordingInterval) clearInterval(recordingInterval);
     };
-  }, [activeRenderer, toast]);
+  }, [activeRenderer, toast, downloadSettings]);
 
   const handleCopyText = (text: string) => {
     navigator.clipboard.writeText(text);
@@ -1963,35 +2003,60 @@ const GenesisApp = () => {
               </div>
             </div>
             {/* Footer - Account & Settings */}
-            <div className="border-t border-gray-200 dark:border-white/10 pt-3 flex items-center justify-between mt-auto">
-              <div className="flex items-center gap-2.5 min-w-0">
-                <div className="w-8 h-8 rounded-full bg-[#0a1628] dark:bg-[#60aaff]/20 border border-[#0a1628]/20 dark:border-[#60aaff]/40 flex items-center justify-center text-xs font-bold text-white dark:text-[#60aaff] flex-shrink-0 select-none">
-                  G
+            <div className="border-t border-gray-200 dark:border-white/10 pt-3 flex flex-col gap-2 mt-auto">
+              {user ? (
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-2.5 min-w-0">
+                    <div className="w-8 h-8 rounded-full bg-[#1a6adf]/10 text-[#1a6adf] dark:bg-[#60aaff]/20 dark:text-[#60aaff] border border-[#1a6adf]/20 dark:border-[#60aaff]/40 flex items-center justify-center text-xs font-bold flex-shrink-0 select-none">
+                      {user.email?.[0].toUpperCase() || 'U'}
+                    </div>
+                    <div className="min-w-0">
+                      <p className="text-xs font-medium text-gray-800 dark:text-gray-200 truncate">
+                        {user.email}
+                      </p>
+                      <button
+                        onClick={handleSignOut}
+                        className="text-[10px] text-red-500 hover:underline cursor-pointer block text-left"
+                      >
+                        Sign Out
+                      </button>
+                    </div>
+                  </div>
+                  <button
+                    onClick={() => {
+                      setIsSettingsOpen(true);
+                      if (typeof window !== "undefined" && window.innerWidth < 768) {
+                        setSidebarOpen(false);
+                      }
+                    }}
+                    className="p-1.5 text-gray-400 hover:text-gray-700 dark:hover:text-white hover:bg-gray-100 dark:hover:bg-white/5 rounded-lg transition-all cursor-pointer flex-shrink-0"
+                    title="Settings"
+                  >
+                    <Settings size={18} />
+                  </button>
                 </div>
-                <div className="min-w-0">
-                  <p className="text-sm font-medium text-gray-800 dark:text-gray-200 truncate">
-                    Genesis User
-                  </p>
-                  <p className="text-[10px] text-gray-400 dark:text-gray-500">
-                    Free plan
-                  </p>
+              ) : (
+                <div className="flex items-center justify-between gap-2">
+                  <button
+                    onClick={() => setIsAuthModalOpen(true)}
+                    className="flex-1 py-1.5 px-3 bg-[#1a6adf]/10 dark:bg-white/10 hover:bg-[#1a6adf]/20 dark:hover:bg-white/15 text-[#1a6adf] dark:text-white rounded-lg text-xs font-medium transition-colors cursor-pointer border border-[#1a6adf]/20 dark:border-white/10"
+                  >
+                    Sign In
+                  </button>
+                  <button
+                    onClick={() => {
+                      setIsSettingsOpen(true);
+                      if (typeof window !== "undefined" && window.innerWidth < 768) {
+                        setSidebarOpen(false);
+                      }
+                    }}
+                    className="p-1.5 text-gray-400 hover:text-gray-700 dark:hover:text-white hover:bg-gray-100 dark:hover:bg-white/5 rounded-lg transition-all cursor-pointer flex-shrink-0"
+                    title="Settings"
+                  >
+                    <Settings size={18} />
+                  </button>
                 </div>
-              </div>
-              <button
-                onClick={() => {
-                  setIsSettingsOpen(true);
-                  if (
-                    typeof window !== "undefined" &&
-                    window.innerWidth < 768
-                  ) {
-                    setSidebarOpen(false);
-                  }
-                }}
-                className="p-1.5 text-gray-400 hover:text-gray-700 dark:hover:text-white hover:bg-gray-100 dark:hover:bg-white/5 rounded-lg transition-all cursor-pointer flex-shrink-0"
-                title="Settings"
-              >
-                <Settings size={18} />
-              </button>
+              )}
             </div>
           </div>
         ) : (
@@ -3780,39 +3845,111 @@ const GenesisApp = () => {
                           <>
                             <div
                               className="fixed inset-0 z-30"
-                              onClick={() => setIsDownloadDropdownOpen(false)}
+                              onClick={() => {
+                                setIsDownloadDropdownOpen(false);
+                                setShowDownloadSettings(false);
+                              }}
                             />
-                            <div className="absolute top-full right-0 mt-1.5 w-52 bg-white dark:bg-[#151121] border border-gray-200 dark:border-white/10 rounded-lg shadow-lg py-1.5 z-40 animate-fade-in text-gray-900 dark:text-white">
-                              <div className="px-3 py-1 text-[10px] font-semibold text-gray-400 dark:text-gray-500 uppercase tracking-wider border-b border-gray-100 dark:border-white/5 mb-1 select-none">
-                                Download As
-                              </div>
-                              <button
-                                onClick={() => {
-                                  handleDownloadCode();
-                                  setIsDownloadDropdownOpen(false);
-                                }}
-                                className="w-full text-left px-3 py-2 hover:bg-gray-100 dark:hover:bg-white/5 transition-colors flex items-center gap-2 text-xs cursor-pointer text-gray-700 dark:text-gray-300"
-                              >
-                                <FileCode2 size={13} className="text-[#60aaff]" />
-                                <span>Source Code</span>
-                              </button>
-                              
-                              <button
-                                onClick={handleDownloadImage}
-                                className="w-full text-left px-3 py-2 hover:bg-gray-100 dark:hover:bg-white/5 transition-colors flex items-center gap-2 text-xs cursor-pointer text-gray-700 dark:text-gray-300"
-                              >
-                                <Image size={13} className="text-emerald-500" />
-                                <span>Image (PNG)</span>
-                              </button>
+                            <div className="absolute top-full right-0 mt-1.5 w-56 bg-white dark:bg-[#151121] border border-gray-200 dark:border-white/10 rounded-lg shadow-lg py-1.5 z-40 animate-fade-in text-gray-900 dark:text-white">
+                              {!showDownloadSettings ? (
+                                <>
+                                  <div className="px-3 pb-1.5 border-b border-gray-100 dark:border-white/5 mb-1.5 select-none">
+                                    <span className="text-[10px] font-semibold text-gray-400 dark:text-gray-500 uppercase tracking-wider">
+                                      Download As
+                                    </span>
+                                  </div>
+                                  
+                                  <button
+                                    onClick={() => {
+                                      handleDownloadCode();
+                                      setIsDownloadDropdownOpen(false);
+                                    }}
+                                    className="w-full text-left px-3 py-2 hover:bg-gray-100 dark:hover:bg-white/5 transition-colors flex items-center gap-2 text-xs cursor-pointer text-gray-700 dark:text-gray-300"
+                                  >
+                                    <FileCode2 size={13} className="text-[#60aaff]" />
+                                    <span>Source Code</span>
+                                  </button>
+                                  
+                                  <button
+                                    onClick={handleDownloadImage}
+                                    className="w-full text-left px-3 py-2 hover:bg-gray-100 dark:hover:bg-white/5 transition-colors flex items-center gap-2 text-xs cursor-pointer text-gray-700 dark:text-gray-300"
+                                  >
+                                    <Image size={13} className="text-emerald-500" />
+                                    <span>Image (PNG)</span>
+                                  </button>
 
-                              {activeRenderer === "p5" && (
-                                <button
-                                  onClick={handleStartRecording}
-                                  className="w-full text-left px-3 py-2 hover:bg-gray-100 dark:hover:bg-white/5 transition-colors flex items-center gap-2 text-xs cursor-pointer text-gray-700 dark:text-gray-300"
-                                >
-                                  <Video size={13} className="text-red-500" />
-                                  <span>Video Animation (WebM)</span>
-                                </button>
+                                  {activeRenderer === "p5" && (
+                                    <div className="flex items-center justify-between hover:bg-gray-100 dark:hover:bg-white/5 transition-colors pr-1.5 group">
+                                      <button
+                                        onClick={handleStartRecording}
+                                        className="flex-1 text-left px-3 py-2 flex items-center gap-2 text-xs cursor-pointer text-gray-700 dark:text-gray-300"
+                                      >
+                                        <Video size={13} className="text-red-500" />
+                                        <span>Video Animation (WebM)</span>
+                                      </button>
+                                      <button
+                                        onClick={() => setShowDownloadSettings(true)}
+                                        className="p-1 rounded text-gray-400 hover:text-gray-600 dark:hover:text-gray-200 hover:bg-gray-200 dark:hover:bg-white/10 transition-colors cursor-pointer"
+                                        title="Video Settings"
+                                      >
+                                        <Settings size={12} className="group-hover:rotate-45 transition-transform duration-300" />
+                                      </button>
+                                    </div>
+                                  )}
+                                </>
+                              ) : (
+                                <>
+                                  <div className="px-3 pb-1 flex items-center border-b border-gray-100 dark:border-white/5 mb-2 select-none">
+                                    <button
+                                      onClick={() => setShowDownloadSettings(false)}
+                                      className="p-0.5 rounded text-gray-400 hover:text-gray-600 dark:hover:text-gray-200 transition-colors cursor-pointer mr-1"
+                                      title="Back"
+                                    >
+                                      <ChevronLeft size={14} />
+                                    </button>
+                                    <span className="text-[10px] font-semibold text-gray-400 dark:text-gray-500 uppercase tracking-wider flex-1 text-left">
+                                      Video Settings
+                                    </span>
+                                  </div>
+
+                                  <div className="px-3 py-1 space-y-3">
+                                    {/* Duration setting */}
+                                    <div>
+                                      <label className="text-[10px] font-medium text-gray-400 dark:text-gray-500 block mb-1">
+                                        Video Duration: {downloadSettings.videoDuration}s
+                                      </label>
+                                      <div className="grid grid-cols-4 gap-1">
+                                        {[5, 10, 15, 30].map((d) => (
+                                          <button
+                                            key={d}
+                                            onClick={() => updateDownloadSettings({ videoDuration: d })}
+                                            className={`py-1 rounded text-[10px] font-medium border text-center transition-colors cursor-pointer ${downloadSettings.videoDuration === d ? 'border-[#1a6adf] dark:border-[#60aaff] bg-[#1a6adf]/10 dark:bg-[#60aaff]/10 text-[#1a6adf] dark:text-[#60aaff]' : 'border-gray-200 dark:border-white/10 hover:bg-gray-50 dark:hover:bg-white/5 text-gray-600 dark:text-gray-400'}`}
+                                          >
+                                            {d}s
+                                          </button>
+                                        ))}
+                                      </div>
+                                    </div>
+
+                                    {/* FPS setting */}
+                                    <div>
+                                      <label className="text-[10px] font-medium text-gray-400 dark:text-gray-500 block mb-1">
+                                        Video Frame Rate: {downloadSettings.videoFps} FPS
+                                      </label>
+                                      <div className="grid grid-cols-2 gap-1.5">
+                                        {[30, 60].map((f) => (
+                                          <button
+                                            key={f}
+                                            onClick={() => updateDownloadSettings({ videoFps: f })}
+                                            className={`py-1.5 rounded text-[10px] font-medium border text-center transition-colors cursor-pointer ${downloadSettings.videoFps === f ? 'border-[#1a6adf] dark:border-[#60aaff] bg-[#1a6adf]/10 dark:bg-[#60aaff]/10 text-[#1a6adf] dark:text-[#60aaff]' : 'border-gray-200 dark:border-white/10 hover:bg-gray-50 dark:hover:bg-white/5 text-gray-600 dark:text-gray-400'}`}
+                                          >
+                                            {f} FPS
+                                          </button>
+                                        ))}
+                                      </div>
+                                    </div>
+                                  </div>
+                                </>
                               )}
                             </div>
                           </>
@@ -4206,6 +4343,12 @@ const GenesisApp = () => {
       <SettingsModal
         isOpen={isSettingsOpen}
         onClose={() => setIsSettingsOpen(false)}
+      />
+
+      {/* Auth Modal */}
+      <AuthModal
+        isOpen={isAuthModalOpen}
+        onClose={() => setIsAuthModalOpen(false)}
       />
     </div>
   );
