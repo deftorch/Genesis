@@ -113,6 +113,100 @@ const getRelativeTimeString = (dateInput: Date | string) => {
   });
 };
 
+const getCategoryInfo = (renderer: RendererType, code: string = "", title: string = "") => {
+  const t = title.toLowerCase();
+  const c = code.toLowerCase();
+  const r = renderer || "p5";
+
+  if (r === "d3") {
+    if (t.includes("pie") || c.includes("d3.arc") || c.includes("pie")) {
+      return {
+        name: "Pie Chart",
+        icon: PieChart,
+        colorClass: "bg-orange-100 text-orange-700 dark:bg-orange-500/10 dark:text-orange-400"
+      };
+    }
+    if (t.includes("network") || t.includes("graph") || c.includes("forcesimulation") || c.includes("link")) {
+      return {
+        name: "Network",
+        icon: Network,
+        colorClass: "bg-orange-100 text-orange-700 dark:bg-orange-500/10 dark:text-orange-400"
+      };
+    }
+    return {
+      name: "Bar Chart",
+      icon: BarChart3,
+      colorClass: "bg-orange-100 text-orange-700 dark:bg-orange-500/10 dark:text-orange-400"
+    };
+  }
+
+  if (r === "mermaid") {
+    if (t.includes("sequence") || c.includes("sequencediagram")) {
+      return {
+        name: "Sequence",
+        icon: Clock,
+        colorClass: "bg-blue-100 text-blue-700 dark:bg-blue-500/10 dark:text-blue-400"
+      };
+    }
+    return {
+      name: "Flowchart",
+      icon: Network,
+      colorClass: "bg-blue-100 text-blue-700 dark:bg-blue-500/10 dark:text-blue-400"
+    };
+  }
+
+  if (r === "svg") {
+    if (t.includes("diagram") || t.includes("flow") || t.includes("chart")) {
+      return {
+        name: "Diagram",
+        icon: GitFork,
+        colorClass: "bg-teal-100 text-teal-700 dark:bg-teal-500/10 dark:text-teal-400"
+      };
+    }
+    return {
+      name: "Logo",
+      icon: Shapes,
+      colorClass: "bg-teal-100 text-teal-700 dark:bg-teal-500/10 dark:text-teal-400"
+    };
+  }
+
+  // default to p5
+  if (t.includes("game") || t.includes("play") || t.includes("interactive") || c.includes("keypressed") || c.includes("mouseclicked") || c.includes("game")) {
+    return {
+      name: "Game",
+      icon: Play,
+      colorClass: "bg-purple-100 text-purple-700 dark:bg-purple-500/10 dark:text-purple-400"
+    };
+  }
+  if (t.includes("pattern") || t.includes("wave") || t.includes("grid") || t.includes("gradient") || c.includes("sin(") || c.includes("cos(")) {
+    return {
+      name: "Pattern",
+      icon: Code,
+      colorClass: "bg-purple-100 text-purple-700 dark:bg-purple-500/10 dark:text-purple-400"
+    };
+  }
+  if (t.includes("animation") || t.includes("bouncing") || t.includes("particle") || c.includes("framecount") || c.includes("framerate")) {
+    return {
+      name: "Animation",
+      icon: Film,
+      colorClass: "bg-purple-100 text-purple-700 dark:bg-purple-500/10 dark:text-purple-400"
+    };
+  }
+  if (t.includes("art") || t.includes("fractal") || t.includes("generative") || c.includes("random") || c.includes("noise")) {
+    return {
+      name: "Art",
+      icon: Image,
+      colorClass: "bg-purple-100 text-purple-700 dark:bg-purple-500/10 dark:text-purple-400"
+    };
+  }
+
+  return {
+    name: "Canvas",
+    icon: Layout,
+    colorClass: "bg-purple-100 text-purple-700 dark:bg-purple-500/10 dark:text-purple-400"
+  };
+};
+
 const GenesisApp = () => {
   const chatStore = useChatStore();
   const { preferences } = useSettingsStore();
@@ -2800,17 +2894,22 @@ const GenesisApp = () => {
                                         : "p5.js"}
                                 </span>
                               ) : (
-                                <div className="flex items-center justify-center p-1.5 rounded-lg bg-gray-100 dark:bg-white/5">
-                                  {(artifact.renderer || "p5") === "d3" ? (
-                                    <BarChart3 size={14} className="text-[#e27a4d]" />
-                                  ) : (artifact.renderer || "p5") === "svg" ? (
-                                    <Shapes size={14} className="text-[#3b82f6]" />
-                                  ) : (artifact.renderer || "p5") === "mermaid" ? (
-                                    <Network size={14} className="text-[#8b5cf6]" />
-                                  ) : (
-                                    <Layout size={14} className="text-[#10b981]" />
-                                  )}
-                                </div>
+                                (() => {
+                                  const category = getCategoryInfo(
+                                    artifact.renderer || "p5",
+                                    artifact.code,
+                                    artifact.chatTitle
+                                  );
+                                  const CategoryIcon = category.icon;
+                                  return (
+                                    <span
+                                      className={`flex items-center gap-1 text-[10px] px-2 py-0.5 rounded font-medium select-none ${category.colorClass}`}
+                                    >
+                                      <CategoryIcon size={10} />
+                                      <span>{category.name}</span>
+                                    </span>
+                                  );
+                                })()
                               )}
                             </div>
                             <p className="text-xs text-gray-400 dark:text-gray-500">
@@ -3317,17 +3416,28 @@ const GenesisApp = () => {
                   <div className="border-b border-[#1e468c]/10 dark:border-white/10 p-4 flex items-center justify-between flex-shrink-0 bg-transparent select-none">
                     {/* Left: Active File Tab */}
                     <div className="flex items-center gap-2 px-3 py-1 rounded-md text-xs font-medium backdrop-blur-md preview-panel-filetab">
-                      {preferences.developerMode ? (
-                        <FileCode2 size={13} className="text-gray-500 dark:text-[#7aaae8]" />
-                      ) : activeRenderer === "d3" ? (
-                        <BarChart3 size={13} className="text-[#e27a4d]" />
-                      ) : activeRenderer === "svg" ? (
-                        <Shapes size={13} className="text-[#3b82f6]" />
-                      ) : activeRenderer === "mermaid" ? (
-                        <Network size={13} className="text-[#8b5cf6]" />
-                      ) : (
-                        <Layout size={13} className="text-[#10b981]" />
-                      )}
+                      {(() => {
+                        if (preferences.developerMode) {
+                          return (
+                            <FileCode2
+                              size={13}
+                              className="text-gray-500 dark:text-[#7aaae8]"
+                            />
+                          );
+                        }
+                        const category = getCategoryInfo(
+                          activeRenderer,
+                          p5Code,
+                          getFriendlyTitle()
+                        );
+                        const CategoryIcon = category.icon;
+                        return (
+                          <CategoryIcon
+                            size={13}
+                            className="text-gray-500 dark:text-[#7aaae8]"
+                          />
+                        );
+                      })()}
                       <span>
                         {preferences.developerMode
                           ? activeRenderer === "svg"
