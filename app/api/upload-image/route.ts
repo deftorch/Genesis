@@ -23,16 +23,22 @@ export async function POST(req: Request) {
 
     // Validate file magic bytes (binary signature)
     const arrayBuffer = await file.arrayBuffer();
-    const bytes = new Uint8Array(arrayBuffer.slice(0, 4));
+    // Ambil 12 byte untuk validasi WebP yang benar
+    const bytes = new Uint8Array(arrayBuffer.slice(0, 12));
     let header = '';
-    for (let i = 0; i < bytes.length; i++) {
+    for (let i = 0; i < 4; i++) {
       header += bytes[i].toString(16).padStart(2, '0').toUpperCase();
     }
 
     const isJpeg = header.startsWith('FFD8FF');
     const isPng = header.startsWith('89504E47');
     const isGif = header.startsWith('47494638');
-    const isWebp = header.startsWith('52494646'); // RIFF
+
+    // WebP: RIFF di byte 0-3 DAN 'WEBP' di byte 8-11
+    const webpSignature = Array.from(bytes.slice(8, 12))
+      .map(b => String.fromCharCode(b))
+      .join('');
+    const isWebp = header.startsWith('52494646') && webpSignature === 'WEBP';
 
     if (!isJpeg && !isPng && !isGif && !isWebp) {
       return NextResponse.json(

@@ -1,9 +1,25 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { callGeminiWithRotation } from '@/lib/gemini-client';
+import { chatRateLimiter } from '@/lib/rate-limiter';
+import { sanitizeCodeForPrompt } from '@/lib/sanitize';
 
 export async function POST(req: Request) {
+  const ip = req.headers.get('x-forwarded-for') 
+          ?? req.headers.get('x-real-ip') 
+          ?? 'anonymous';
+
   try {
-    const { messages, model, currentCode, images } = await req.json();
+    chatRateLimiter.check(20, ip);
+  } catch {
+    return NextResponse.json(
+      { error: 'Too many requests. Please slow down.' },
+      { status: 429, headers: { 'Retry-After': '60' } }
+    );
+  }
+
+  try {
+    const { messages, model, currentCode: rawCurrentCode, images } = await req.json();
+    const currentCode = rawCurrentCode ? sanitizeCodeForPrompt(rawCurrentCode) : '';
 
     if (!messages || messages.length === 0) {
       return NextResponse.json(

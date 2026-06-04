@@ -27,41 +27,47 @@ export const ImageUpload: React.FC<ImageUploadProps> = ({
   });
 
   return (
-    <div
-      {...getRootProps()}
-      className={cn(
-        'border-2 border-dashed rounded-lg p-8 text-center cursor-pointer transition-colors',
-        isDragActive ? 'border-primary bg-primary/5' : 'border-border hover:border-primary/50',
-        className
-      )}
-    >
-      <input {...getInputProps()} />
-      
-      <div className="flex flex-col items-center gap-4">
-        <div className="p-4 rounded-full bg-muted">
-          <Upload className="h-8 w-8 text-muted-foreground" />
-        </div>
+    <div className="w-full">
+      <div
+        {...getRootProps()}
+        className={cn(
+          'border-2 border-dashed rounded-lg p-8 text-center cursor-pointer transition-colors',
+          isDragActive ? 'border-primary bg-primary/5' : 'border-border hover:border-primary/50',
+          className
+        )}
+      >
+        <input {...getInputProps()} />
         
-        <div>
-          <p className="text-sm font-medium">
-            {isDragActive ? 'Drop images here' : 'Drag & drop images here'}
-          </p>
-          <p className="text-xs text-muted-foreground mt-1">
-            or click to browse • Max {maxFiles} files • Up to {FILE_UPLOAD_CONFIG.maxSize / (1024 * 1024)}MB each
-          </p>
-          <p className="text-xs text-green-600 dark:text-green-400 mt-2 font-medium">
-            ✅ Images uploaded to ThumbSnap (publicly accessible)
-          </p>
-        </div>
+        <div className="flex flex-col items-center gap-4">
+          <div className="p-4 rounded-full bg-muted">
+            <Upload className="h-8 w-8 text-muted-foreground" />
+          </div>
+          
+          <div>
+            <p className="text-sm font-medium">
+              {isDragActive ? 'Drop images here' : 'Drag & drop images here'}
+            </p>
+            <p className="text-xs text-muted-foreground mt-1">
+              or click to browse • Max {maxFiles} files • Up to {FILE_UPLOAD_CONFIG.maxSize / (1024 * 1024)}MB each
+            </p>
+            <p className="text-xs text-green-600 dark:text-green-400 mt-2 font-medium">
+              ✅ Images uploaded to ThumbSnap (publicly accessible)
+            </p>
+          </div>
 
-        <div className="flex gap-2 text-xs text-muted-foreground">
-          {FILE_UPLOAD_CONFIG.acceptedExtensions.map((ext) => (
-            <span key={ext} className="px-2 py-1 bg-muted rounded">
-              {ext}
-            </span>
-          ))}
+          <div className="flex gap-2 text-xs text-muted-foreground">
+            {FILE_UPLOAD_CONFIG.acceptedExtensions.map((ext) => (
+              <span key={ext} className="px-2 py-1 bg-muted rounded">
+                {ext}
+              </span>
+            ))}
+          </div>
         </div>
       </div>
+      <p className="text-xs text-gray-400 dark:text-gray-500 mt-2 text-center">
+        Gambar akan diunggah ke layanan hosting pihak ketiga untuk diproses.
+        Hindari mengunggah informasi sensitif.
+      </p>
     </div>
   );
 };

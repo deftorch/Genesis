@@ -6,10 +6,11 @@ interface P5CanvasProps {
   code: string;
   width?: number;
   height?: number;
+  onError?: (error: Error) => void;
   onDownload?: () => void;
 }
 
-const P5Canvas: React.FC<P5CanvasProps> = ({ code, width = 400, height = 400 }) => {
+const P5Canvas: React.FC<P5CanvasProps> = ({ code, width = 400, height = 400, onError }) => {
   const iframeRef = useRef<HTMLIFrameElement>(null);
 
   // Generate the HTML content for the iframe using srcdoc

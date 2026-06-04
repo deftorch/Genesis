@@ -6,9 +6,10 @@ interface SVGCanvasProps {
   code: string;
   width?: number;
   height?: number;
+  onError?: (error: Error) => void;
 }
 
-const SVGCanvas: React.FC<SVGCanvasProps> = ({ code, width = 400, height = 400 }) => {
+const SVGCanvas: React.FC<SVGCanvasProps> = ({ code, width = 400, height = 400, onError }) => {
   const iframeRef = useRef<HTMLIFrameElement>(null);
 
   // Generate the HTML content for the iframe using srcdoc

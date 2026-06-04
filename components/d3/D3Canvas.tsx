@@ -6,9 +6,10 @@ interface D3CanvasProps {
   code: string;
   width?: number;
   height?: number;
+  onError?: (error: Error) => void;
 }
 
-const D3Canvas: React.FC<D3CanvasProps> = ({ code, width = 400, height = 400 }) => {
+const D3Canvas: React.FC<D3CanvasProps> = ({ code, width = 400, height = 400, onError }) => {
   const iframeRef = useRef<HTMLIFrameElement>(null);
 
   // Generate the HTML content for the iframe using srcdoc

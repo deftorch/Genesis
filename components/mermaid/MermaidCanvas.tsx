@@ -6,9 +6,10 @@ interface MermaidCanvasProps {
   code: string;
   width?: number;
   height?: number;
+  onError?: (error: Error) => void;
 }
 
-const MermaidCanvas: React.FC<MermaidCanvasProps> = ({ code, width = 400, height = 400 }) => {
+const MermaidCanvas: React.FC<MermaidCanvasProps> = ({ code, width = 400, height = 400, onError }) => {
   const iframeRef = useRef<HTMLIFrameElement>(null);
 
   // Generate the HTML content for the iframe using srcdoc

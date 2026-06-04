@@ -10,7 +10,16 @@ export async function GET(request: NextRequest) {
     const url = new URL(request.url);
     const queryToken = url.searchParams.get('token');
     
-    const cronToken = process.env.CRON_TOKEN || 'local-fallback-cleanup-token';
+    const cronToken = process.env.CRON_TOKEN;
+
+    if (!cronToken) {
+      console.error('[Cleanup] CRON_TOKEN environment variable is not set.');
+      return NextResponse.json(
+        { error: 'Service not configured' },
+        { status: 503 }
+      );
+    }
+
     const isAuthorized = 
       (authHeader === `Bearer ${cronToken}`) || 
       (queryToken === cronToken);
