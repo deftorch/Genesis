@@ -1,6 +1,7 @@
 'use client';
 
-import React, { useMemo, useRef } from 'react';
+import React, { useMemo, useRef, useState, useEffect } from 'react';
+import { useSettingsStore } from '@/lib/store/settings-store';
 
 interface SVGCanvasProps {
   code: string;
@@ -11,6 +12,37 @@ interface SVGCanvasProps {
 
 const SVGCanvas: React.FC<SVGCanvasProps> = ({ code, width = 400, height = 400, onError }) => {
   const iframeRef = useRef<HTMLIFrameElement>(null);
+  const { preferences } = useSettingsStore();
+  const [mounted, setMounted] = useState(false);
+  const [isDark, setIsDark] = useState(() => {
+    if (typeof window !== 'undefined') {
+      const theme = useSettingsStore.getState().preferences.theme;
+      if (theme === 'dark') return true;
+      if (theme === 'system') return window.matchMedia('(prefers-color-scheme: dark)').matches;
+    }
+    return false;
+  });
+
+  useEffect(() => {
+    setMounted(true);
+    const checkTheme = () => {
+      if (preferences.theme === 'dark') {
+        setIsDark(true);
+      } else if (preferences.theme === 'system') {
+        setIsDark(window.matchMedia('(prefers-color-scheme: dark)').matches);
+      } else {
+        setIsDark(false);
+      }
+    };
+    checkTheme();
+
+    if (preferences.theme === 'system') {
+      const mediaQuery = window.matchMedia('(prefers-color-scheme: dark)');
+      const handler = (e: MediaQueryListEvent) => setIsDark(e.matches);
+      mediaQuery.addEventListener('change', handler);
+      return () => mediaQuery.removeEventListener('change', handler);
+    }
+  }, [preferences.theme]);
 
   // Generate the HTML content for the iframe using srcdoc
   const htmlContent = useMemo(() => {
@@ -32,8 +64,9 @@ const SVGCanvas: React.FC<SVGCanvasProps> = ({ code, width = 400, height = 400, 
       justify-content: center; 
       align-items: center; 
       min-height: 100vh;
-      background: #1a1a2e;
+      background: ${isDark ? '#0b0f19' : '#ffffff'};
       overflow: hidden;
+      transition: background-color 0.3s ease;
     }
     .svg-container {
       display: flex;
@@ -45,14 +78,14 @@ const SVGCanvas: React.FC<SVGCanvasProps> = ({ code, width = 400, height = 400, 
     }
     .svg-container svg {
       max-width: 100%;
-      max-height: 100%;
+      height: auto !important;
       display: block;
     }
     .error {
       color: #ff6b6b;
       font-family: monospace;
       padding: 20px;
-      background: #2d1f1f;
+      background: ${isDark ? '#2d1f1f' : '#fee2e2'};
       border-radius: 8px;
       max-width: 90%;
       word-wrap: break-word;
@@ -115,7 +148,7 @@ const SVGCanvas: React.FC<SVGCanvasProps> = ({ code, width = 400, height = 400, 
   </script>
 </body>
 </html>`;
-  }, [code]);
+  }, [code, isDark]);
 
   // Function to trigger download
   const downloadImage = () => {
@@ -138,12 +171,16 @@ const SVGCanvas: React.FC<SVGCanvasProps> = ({ code, width = 400, height = 400, 
 
   if (!code) {
     return (
-      <div className="w-full h-full flex items-center justify-center bg-gray-800 rounded-lg">
-        <div className="text-center text-gray-400">
+      <div className={`w-full h-full flex items-center justify-center rounded-lg transition-colors duration-300 ${isDark ? 'bg-gray-900 text-gray-400' : 'bg-gray-100 text-gray-500'}`}>
+        <div className="text-center">
           <p>No SVG illustration to preview</p>
         </div>
       </div>
     );
+  }
+
+  if (!mounted) {
+    return <div className={`w-full h-full animate-pulse rounded-lg ${isDark ? 'bg-gray-950' : 'bg-white'}`} style={{ minHeight: `${height}px` }} />;
   }
 
   return (
@@ -152,8 +189,8 @@ const SVGCanvas: React.FC<SVGCanvasProps> = ({ code, width = 400, height = 400, 
         ref={iframeRef}
         key={code}
         srcDoc={htmlContent}
-        className="w-full flex-1 border-0 rounded-lg bg-gray-900"
-        style={{ minHeight: `${height}px` }}
+        className={`w-full flex-1 border-0 rounded-lg transition-colors duration-300 ${isDark ? 'bg-gray-950' : 'bg-white'}`}
+        style={{ width: '100%', height: '100%', border: 'none' }}
         sandbox="allow-scripts"
         title="SVG Illustration"
       />

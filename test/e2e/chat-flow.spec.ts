@@ -71,7 +71,7 @@ test.describe('Genesis Chat Application E2E Tests', () => {
 
   test('should submit user prompt, receive mock response, and display preview panel', async ({ page }) => {
     // Type in chat input and submit
-    const input = page.getByPlaceholder('How can I help you today?');
+    const input = page.getByPlaceholder('What creativity do you want to realize today?');
     await expect(input).toBeVisible();
     await input.fill('Create a circle animation');
     await input.press('Enter');

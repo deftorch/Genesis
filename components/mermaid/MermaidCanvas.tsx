@@ -1,6 +1,7 @@
 'use client';
 
-import React, { useMemo, useRef, useEffect } from 'react';
+import React, { useMemo, useRef, useEffect, useState } from 'react';
+import { useSettingsStore } from '@/lib/store/settings-store';
 
 interface MermaidCanvasProps {
   code: string;
@@ -11,6 +12,37 @@ interface MermaidCanvasProps {
 
 const MermaidCanvas: React.FC<MermaidCanvasProps> = ({ code, width = 400, height = 400, onError }) => {
   const iframeRef = useRef<HTMLIFrameElement>(null);
+  const { preferences } = useSettingsStore();
+  const [mounted, setMounted] = useState(false);
+  const [isDark, setIsDark] = useState(() => {
+    if (typeof window !== 'undefined') {
+      const theme = useSettingsStore.getState().preferences.theme;
+      if (theme === 'dark') return true;
+      if (theme === 'system') return window.matchMedia('(prefers-color-scheme: dark)').matches;
+    }
+    return false;
+  });
+
+  useEffect(() => {
+    setMounted(true);
+    const checkTheme = () => {
+      if (preferences.theme === 'dark') {
+        setIsDark(true);
+      } else if (preferences.theme === 'system') {
+        setIsDark(window.matchMedia('(prefers-color-scheme: dark)').matches);
+      } else {
+        setIsDark(false);
+      }
+    };
+    checkTheme();
+
+    if (preferences.theme === 'system') {
+      const mediaQuery = window.matchMedia('(prefers-color-scheme: dark)');
+      const handler = (e: MediaQueryListEvent) => setIsDark(e.matches);
+      mediaQuery.addEventListener('change', handler);
+      return () => mediaQuery.removeEventListener('change', handler);
+    }
+  }, [preferences.theme]);
 
   // Generate the HTML content for the iframe using srcdoc
   const htmlContent = useMemo(() => {
@@ -18,11 +50,6 @@ const MermaidCanvas: React.FC<MermaidCanvasProps> = ({ code, width = 400, height
 
     // Strip the renderer comment from the code before injecting
     const cleanCode = code.replace(/^\/\/ renderer: mermaid\s*\n?/, '').trim();
-
-    // Escape backticks and backslashes for JS injection
-    const escapedCode = cleanCode
-      .replace(/\\/g, '\\\\')
-      .replace(/`/g, '\\`');
 
     return `<!DOCTYPE html>
 <html>
@@ -34,9 +61,10 @@ const MermaidCanvas: React.FC<MermaidCanvasProps> = ({ code, width = 400, height
       justify-content: center; 
       align-items: center; 
       min-height: 100vh;
-      background: #ffffff;
+      background: ${isDark ? '#0b0f19' : '#ffffff'};
       overflow: auto;
       padding: 20px;
+      transition: background-color 0.3s ease;
     }
     .mermaid {
       display: flex;
@@ -44,11 +72,15 @@ const MermaidCanvas: React.FC<MermaidCanvasProps> = ({ code, width = 400, height
       align-items: center;
       width: 100%;
     }
+    .mermaid svg {
+      max-width: 100% !important;
+      height: auto !important;
+    }
     .error {
       color: #ff6b6b;
       font-family: monospace;
       padding: 20px;
-      background: #2d1f1f;
+      background: ${isDark ? '#2d1f1f' : '#fee2e2'};
       border-radius: 8px;
       max-width: 90%;
       word-wrap: break-word;
@@ -63,7 +95,7 @@ const MermaidCanvas: React.FC<MermaidCanvasProps> = ({ code, width = 400, height
   <script>
     mermaid.initialize({ 
       startOnLoad: true,
-      theme: 'neutral',
+      theme: '${isDark ? 'dark' : 'neutral'}',
       securityLevel: 'loose',
       fontFamily: 'Inter, system-ui, sans-serif'
     });
@@ -89,7 +121,7 @@ const MermaidCanvas: React.FC<MermaidCanvasProps> = ({ code, width = 400, height
             canvas.width = (bbox.width + 40) * 2;
             canvas.height = (bbox.height + 40) * 2;
             var ctx = canvas.getContext('2d');
-            ctx.fillStyle = 'white';
+            ctx.fillStyle = '${isDark ? '#0b0f19' : '#ffffff'}';
             ctx.fillRect(0, 0, canvas.width, canvas.height);
             ctx.scale(2, 2);
             ctx.drawImage(img, 20, 20);
@@ -110,7 +142,7 @@ const MermaidCanvas: React.FC<MermaidCanvasProps> = ({ code, width = 400, height
   </script>
 </body>
 </html>`;
-  }, [code]);
+  }, [code, isDark]);
 
   const downloadImage = () => {
     if (iframeRef.current?.contentWindow) {
@@ -132,12 +164,16 @@ const MermaidCanvas: React.FC<MermaidCanvasProps> = ({ code, width = 400, height
 
   if (!code) {
     return (
-      <div className="w-full h-full flex items-center justify-center bg-gray-100 rounded-lg">
-        <div className="text-center text-gray-400">
+      <div className={`w-full h-full flex items-center justify-center rounded-lg transition-colors duration-300 ${isDark ? 'bg-gray-900 text-gray-400' : 'bg-gray-100 text-gray-500'}`}>
+        <div className="text-center">
           <p>No diagram to preview</p>
         </div>
       </div>
     );
+  }
+
+  if (!mounted) {
+    return <div className={`w-full h-full animate-pulse rounded-lg ${isDark ? 'bg-gray-950' : 'bg-white'}`} style={{ minHeight: `${height}px` }} />;
   }
 
   return (
@@ -146,8 +182,8 @@ const MermaidCanvas: React.FC<MermaidCanvasProps> = ({ code, width = 400, height
         ref={iframeRef}
         key={code}
         srcDoc={htmlContent}
-        className="w-full flex-1 border-0 rounded-lg bg-white"
-        style={{ minHeight: `${height}px` }}
+        className={`w-full flex-1 border-0 rounded-lg transition-colors duration-300 ${isDark ? 'bg-gray-950' : 'bg-white'}`}
+        style={{ width: '100%', height: '100%', border: 'none' }}
         sandbox="allow-scripts"
         title="Mermaid Diagram"
       />

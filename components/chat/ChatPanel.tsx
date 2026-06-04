@@ -36,6 +36,7 @@ import {
   ThumbsUp,
   ThumbsDown,
   Code,
+  PanelLeft,
 } from 'lucide-react';
 
 import { useUIStore } from '@/lib/store/ui-store';
@@ -243,6 +244,19 @@ export const ChatPanel: React.FC<ChatPanelProps> = ({
 
   const modelDropdownRef = useRef<HTMLDivElement>(null);
   const messagesEndRef = useRef<HTMLDivElement>(null);
+  const [showSidebarHint, setShowSidebarHint] = useState(false);
+
+  useEffect(() => {
+    if (!ui.sidebarOpen) {
+      setShowSidebarHint(true);
+      const timer = setTimeout(() => {
+        setShowSidebarHint(false);
+      }, 3000);
+      return () => clearTimeout(timer);
+    } else {
+      setShowSidebarHint(false);
+    }
+  }, [ui.sidebarOpen]);
 
   // Auto-scroll messages
   useEffect(() => {
@@ -424,18 +438,44 @@ export const ChatPanel: React.FC<ChatPanelProps> = ({
 
   return (
     <div
-      className={`flex-1 flex flex-col min-w-0 ${ui.showArtifact && !ui.isArtifactFullscreen ? 'w-1/2' : ui.showArtifact && ui.isArtifactFullscreen ? 'hidden' : 'w-full'} bg-transparent`}
+      className={`flex-1 flex flex-col min-w-0 ${ui.showArtifact && !ui.isArtifactFullscreen ? 'hidden md:flex md:w-1/2' : ui.showArtifact && ui.isArtifactFullscreen ? 'hidden' : 'w-full'} bg-transparent`}
     >
       {/* Header */}
       <div className="border-b border-[#1e468c]/12 dark:border-white/10 p-4 flex items-center justify-between flex-shrink-0 bg-[#fffaf0]/28 dark:bg-transparent backdrop-blur-md dark:backdrop-blur-none">
         <div className="flex items-center gap-3 min-w-0 flex-1">
+          {/* Mobile Sidebar Toggle Button */}
           {!ui.sidebarOpen && (
             <button
               onClick={() => ui.setSidebarOpen(true)}
-              className="p-1.5 text-gray-400 hover:text-gray-950 dark:hover:text-white hover:bg-gray-200 dark:hover:bg-white/10 rounded-lg transition-colors cursor-pointer"
+              className="flex md:hidden group w-10 h-10 rounded-lg items-center justify-center text-gray-500 hover:text-gray-900 dark:text-gray-400 dark:hover:text-white hover:bg-gray-100 dark:hover:bg-white/10 transition-all cursor-pointer relative flex-shrink-0"
               title="Expand sidebar"
             >
-              <Layout size={18} />
+              <PanelLeft
+                size={20}
+                className={`absolute transition-all duration-300 ease-in-out ${showSidebarHint ? 'opacity-100 scale-100' : 'opacity-0 scale-75 group-hover:opacity-100 group-hover:scale-100'}`}
+              />
+              <div className={`w-7 h-7 absolute transition-all duration-300 ease-in-out flex items-center justify-center ${showSidebarHint ? 'opacity-0 scale-75' : 'opacity-100 scale-100 group-hover:opacity-0 group-hover:scale-75'}`}>
+                <svg className="w-full h-full" viewBox="0 0 32 32" fill="none">
+                  <defs>
+                    <linearGradient id="genesisGradMobileLogo" x1="0%" y1="0%" x2="100%" y2="100%">
+                      <stop offset="0%" stopColor="#3b82f6" />
+                      <stop offset="50%" stopColor="#60aaff" />
+                      <stop offset="100%" stopColor="#8b5cf6" />
+                    </linearGradient>
+                  </defs>
+                  <path
+                    d="M26 16C26 21.5228 21.5228 26 16 26C10.4772 26 6 21.5228 6 16C6 10.4772 10.4772 6 16 6C19.3431 6 22.2868 7.6393 24.1002 10.1584"
+                    stroke="url(#genesisGradMobileLogo)"
+                    strokeWidth="2.5"
+                    strokeLinecap="round"
+                  />
+                  <path d="M16 16H25" stroke="url(#genesisGradMobileLogo)" strokeWidth="2.5" strokeLinecap="round" />
+                  <path
+                    d="M16 11L17.5 14.5L21 16L17.5 17.5L16 21L14.5 17.5L11 16L14.5 14.5L16 11Z"
+                    fill="url(#genesisGradMobileLogo)"
+                  />
+                </svg>
+              </div>
             </button>
           )}
 
@@ -591,7 +631,7 @@ export const ChatPanel: React.FC<ChatPanelProps> = ({
                   }
                 }}
                 disabled={isLoading}
-                placeholder="What would you like to create today?"
+                placeholder="What creativity do you want to realize today?"
                 className="w-full bg-transparent border-0 outline-none resize-none min-h-[44px] max-h-[180px] text-base leading-relaxed text-[#0a1628] dark:text-white placeholder-[#5580bb] dark:placeholder-gray-500 disabled:opacity-50"
                 rows={1}
                 ref={chatInputRef}
@@ -604,7 +644,7 @@ export const ChatPanel: React.FC<ChatPanelProps> = ({
                     className="w-8 h-8 rounded-xl flex items-center justify-center text-gray-400 hover:text-gray-900 dark:hover:text-white hover:bg-gray-100 dark:hover:bg-white/10 transition-colors disabled:opacity-50 cursor-pointer"
                     title="Attach image"
                   >
-                    {isUploading ? <Loader2 size={16} className="animate-spin" /> : <Paperclip size={16} />}
+                    {isUploading ? <Loader2 size={16} className="animate-spin" /> : <Plus size={16} />}
                   </button>
                   {attachedImages.length > 0 && (
                     <span className="text-[10px] text-gray-400 font-mono">
@@ -669,9 +709,9 @@ export const ChatPanel: React.FC<ChatPanelProps> = ({
               </div>
             </div>
 
-            {/* Quick templates for desktop view */}
-            <div className="hidden md:grid grid-cols-4 gap-2 w-full text-left select-none">
-              {creationTools.slice(0, 4).map((tool, index) => {
+            {/* Quick template pills for desktop view */}
+            <div className="hidden md:flex flex-wrap justify-center gap-2 w-full select-none">
+              {creationTools.map((tool, index) => {
                 const Icon = tool.icon;
                 return (
                   <button
@@ -680,10 +720,10 @@ export const ChatPanel: React.FC<ChatPanelProps> = ({
                       ui.setInputMessage(tool.prompt);
                       setTimeout(() => chatInputRef.current?.focus(), 50);
                     }}
-                    className="flex flex-col gap-2 p-3 bg-white/80 dark:bg-white/5 border border-slate-200 dark:border-white/10 hover:border-[#1a6adf]/40 dark:hover:border-white/20 rounded-xl transition-all cursor-pointer hover:bg-gray-50 dark:hover:bg-white/10 hover:scale-[1.01]"
+                    className="flex items-center gap-1.5 px-3.5 py-2 bg-white/60 dark:bg-white/5 border border-slate-200/80 dark:border-white/10 hover:border-[#1a6adf]/40 dark:hover:border-[#60aaff]/30 rounded-full transition-all cursor-pointer hover:bg-[#1a6adf]/8 dark:hover:bg-[#60aaff]/8 hover:scale-[1.02] active:scale-[0.98]"
                   >
-                    <Icon size={16} className="text-[#1a6adf] dark:text-[#60aaff]" />
-                    <span className="text-[11px] font-medium text-gray-800 dark:text-gray-200">
+                    <Icon size={13} className="text-[#1a6adf] dark:text-[#60aaff]" />
+                    <span className="text-[11px] font-medium text-gray-700 dark:text-gray-300">
                       {tool.name}
                     </span>
                   </button>
@@ -1409,7 +1449,7 @@ export const ChatPanel: React.FC<ChatPanelProps> = ({
                     }
                   }}
                   disabled={isLoading}
-                  placeholder="How can I help you today?"
+                  placeholder="What creativity do you want to realize today?"
                   className="w-full bg-transparent border-0 outline-none resize-none min-h-[36px] max-h-[150px] text-[15px] leading-relaxed text-[#0a1628] dark:text-white placeholder-[#5580bb] dark:placeholder-gray-500 disabled:opacity-50"
                   rows={1}
                   ref={chatInputRef}
@@ -1487,63 +1527,6 @@ export const ChatPanel: React.FC<ChatPanelProps> = ({
             </div>
           </div>
         </>
-      )}
-
-      {/* Floating mobile chat input overlay when previewing */}
-      {ui.showMobileChatInput && ui.showArtifact && (
-        <div className="block sm:hidden absolute bottom-6 left-4 right-4 z-30 p-3 bg-[#fffaf0]/92 dark:bg-[#0f0a1e]/94 border border-[#1e468c]/15 dark:border-white/15 rounded-2xl backdrop-blur-md shadow-[0_10px_35px_rgba(26,106,223,0.15)] dark:shadow-[0_10px_35px_rgba(0,0,0,0.55)] animate-fade-in">
-          <div className="flex flex-col">
-            <textarea
-              value={ui.inputMessage}
-              onChange={(e) => ui.setInputMessage(e.target.value)}
-              onKeyDown={(e) => {
-                if (e.key === 'Enter' && !e.shiftKey) {
-                  e.preventDefault();
-                  if (!isLoading && ui.inputMessage.trim()) {
-                    onSendMessage();
-                    ui.setShowMobileChatInput(false);
-                  }
-                }
-              }}
-              disabled={isLoading}
-              placeholder="Comment or ask for changes..."
-              className="w-full bg-transparent border-0 outline-none resize-none min-h-[36px] max-h-[80px] text-sm leading-relaxed text-[#0a1628] dark:text-white placeholder-[#5580bb] dark:placeholder-gray-500 disabled:opacity-50"
-              rows={1}
-            />
-            <div className="flex items-center justify-between mt-2 pt-1.5 border-t border-[#1e468c]/12 dark:border-white/5">
-              <div className="text-[10px] text-gray-400 dark:text-gray-500 select-none">
-                Ask AI to edit this design...
-              </div>
-              <div className="flex items-center gap-1.5">
-                {isLoading ? (
-                  <button
-                    onClick={() => {
-                      onStopGeneration();
-                      ui.setShowMobileChatInput(false);
-                    }}
-                    className="p-1.5 bg-red-500 hover:bg-red-600 text-white rounded-lg shadow-sm transition-colors cursor-pointer"
-                    title="Stop Generation"
-                  >
-                    <Square size={12} className="fill-white" />
-                  </button>
-                ) : (
-                  <button
-                    onClick={() => {
-                      if (!isLoading && ui.inputMessage.trim()) {
-                        onSendMessage();
-                        ui.setShowMobileChatInput(false);
-                      }
-                    }}
-                    disabled={isLoading || !ui.inputMessage.trim()}
-                    className="p-1.5 bg-[#1a6adf] hover:bg-[#1a6adf]/90 dark:bg-white text-white dark:text-black dark:hover:bg-gray-100 rounded-lg shadow-sm transition-colors cursor-pointer disabled:opacity-50"
-                  >
-                    <Send size={12} />
-                  </button>
-                )}
-              </div>
-            </div>
-          </div>
-        </div>
       )}
     </div>
   );

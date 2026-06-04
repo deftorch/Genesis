@@ -1,6 +1,7 @@
 'use client';
 
-import React, { useMemo, useRef } from 'react';
+import React, { useMemo, useRef, useState, useEffect } from 'react';
+import { useSettingsStore } from '@/lib/store/settings-store';
 
 interface P5CanvasProps {
   code: string;
@@ -12,6 +13,37 @@ interface P5CanvasProps {
 
 const P5Canvas: React.FC<P5CanvasProps> = ({ code, width = 400, height = 400, onError }) => {
   const iframeRef = useRef<HTMLIFrameElement>(null);
+  const { preferences } = useSettingsStore();
+  const [mounted, setMounted] = useState(false);
+  const [isDark, setIsDark] = useState(() => {
+    if (typeof window !== 'undefined') {
+      const theme = useSettingsStore.getState().preferences.theme;
+      if (theme === 'dark') return true;
+      if (theme === 'system') return window.matchMedia('(prefers-color-scheme: dark)').matches;
+    }
+    return false;
+  });
+
+  useEffect(() => {
+    setMounted(true);
+    const checkTheme = () => {
+      if (preferences.theme === 'dark') {
+        setIsDark(true);
+      } else if (preferences.theme === 'system') {
+        setIsDark(window.matchMedia('(prefers-color-scheme: dark)').matches);
+      } else {
+        setIsDark(false);
+      }
+    };
+    checkTheme();
+
+    if (preferences.theme === 'system') {
+      const mediaQuery = window.matchMedia('(prefers-color-scheme: dark)');
+      const handler = (e: MediaQueryListEvent) => setIsDark(e.matches);
+      mediaQuery.addEventListener('change', handler);
+      return () => mediaQuery.removeEventListener('change', handler);
+    }
+  }, [preferences.theme]);
 
   // Generate the HTML content for the iframe using srcdoc
   const htmlContent = useMemo(() => {
@@ -27,19 +59,22 @@ const P5Canvas: React.FC<P5CanvasProps> = ({ code, width = 400, height = 400, on
       justify-content: center; 
       align-items: center; 
       min-height: 100vh;
-      background: #1a1a2e;
+      background: ${isDark ? '#0b0f19' : '#f8fafc'};
       overflow: hidden;
+      transition: background-color 0.3s ease;
     }
     canvas { 
       display: block;
       border-radius: 8px;
       box-shadow: 0 4px 20px rgba(0,0,0,0.3);
+      max-width: 100%;
+      height: auto !important;
     }
     .error {
       color: #ff6b6b;
       font-family: monospace;
       padding: 20px;
-      background: #2d1f1f;
+      background: ${isDark ? '#2d1f1f' : '#fee2e2'};
       border-radius: 8px;
       max-width: 90%;
       word-wrap: break-word;
@@ -117,7 +152,7 @@ const P5Canvas: React.FC<P5CanvasProps> = ({ code, width = 400, height = 400, on
   <\/script>
 </body>
 </html>`;
-  }, [code]);
+  }, [code, isDark]);
 
   // Function to trigger download
   const downloadImage = () => {
@@ -134,32 +169,35 @@ const P5Canvas: React.FC<P5CanvasProps> = ({ code, width = 400, height = 400, on
         }
       };
       window.addEventListener('message', handleMessage);
-
-      // Request canvas data from iframe
       iframeRef.current.contentWindow.postMessage('downloadCanvas', '*');
     }
   };
 
-  if (!code) {
-    return (
-      <div className="w-full h-full flex items-center justify-center bg-gray-800 rounded-lg">
-        <div className="text-center text-gray-400">
-          <p>No code to preview</p>
-        </div>
-      </div>
-    );
+  // Function to record video
+  const startRecording = () => {
+    if (iframeRef.current?.contentWindow) {
+      iframeRef.current.contentWindow.postMessage('startRecording', '*');
+    }
+  };
+
+  const stopRecording = () => {
+    if (iframeRef.current?.contentWindow) {
+      iframeRef.current.contentWindow.postMessage('stopRecording', '*');
+    }
+  };
+
+  if (!mounted) {
+    return <div className="w-full h-full bg-[#f8fafc] dark:bg-[#0b0f19] animate-pulse rounded-lg" />;
   }
 
   return (
-    <div className="w-full h-full flex flex-col">
+    <div className="relative w-full h-full flex items-center justify-center p-4">
       <iframe
         ref={iframeRef}
-        key={code} // Force re-render when code changes
         srcDoc={htmlContent}
-        className="w-full flex-1 border-0 rounded-lg bg-gray-900"
-        style={{ minHeight: `${height}px` }}
-        sandbox="allow-scripts"
-        title="p5.js Canvas"
+        style={{ width: '100%', height: '100%', border: 'none' }}
+        sandbox="allow-scripts allow-downloads"
+        title="p5.js Artwork Preview"
       />
     </div>
   );
