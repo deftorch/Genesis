@@ -321,13 +321,13 @@ export const ChatInput: React.FC<ChatInputProps> = ({
                 }}
               />
               <p className="text-xs text-muted-foreground mt-2">
-                💡 You can also upload from device (auto-hosted on ThumbSnap) or use URLs from:
+                💡 You can also upload from device (auto-hosted securely) or use URLs from:
               </p>
               <ul className="text-xs text-muted-foreground mt-1 space-y-1 ml-4">
                 <li>• Imgur (imgur.com)</li>
                 <li>• imgbb (imgbb.com)</li>
                 <li>• Cloudinary (cloudinary.com)</li>
-                <li>• ThumbSnap (thumbsnap.com)</li>
+                <li>• Supabase Storage</li>
               </ul>
             </div>
 

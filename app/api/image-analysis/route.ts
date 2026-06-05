@@ -1,7 +1,21 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { callGeminiWithRotation } from '@/lib/gemini-client';
+import { analysisRateLimiter } from '@/lib/rate-limiter';
 
 export async function POST(request: NextRequest) {
+  const ip = request.headers.get('x-forwarded-for')
+          ?? request.headers.get('x-real-ip')
+          ?? 'anonymous';
+
+  try {
+    analysisRateLimiter.check(15, ip);
+  } catch {
+    return NextResponse.json(
+      { error: 'Too many analysis requests. Please slow down.' },
+      { status: 429, headers: { 'Retry-After': '60' } }
+    );
+  }
+
   try {
     const body = await request.json();
     const { imageUrl, text, sessionId, messages = [] } = body;

@@ -29,3 +29,13 @@ export const chatRateLimiter = rateLimit({
   interval: 60_000,
   uniqueTokenPerInterval: 500,
 });
+
+export const uploadRateLimiter = rateLimit({
+  interval: 60_000,
+  uniqueTokenPerInterval: 500,
+});
+
+export const analysisRateLimiter = rateLimit({
+  interval: 60_000,
+  uniqueTokenPerInterval: 500,
+});

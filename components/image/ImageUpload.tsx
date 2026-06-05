@@ -51,7 +51,7 @@ export const ImageUpload: React.FC<ImageUploadProps> = ({
               or click to browse • Max {maxFiles} files • Up to {FILE_UPLOAD_CONFIG.maxSize / (1024 * 1024)}MB each
             </p>
             <p className="text-xs text-green-600 dark:text-green-400 mt-2 font-medium">
-              ✅ Images uploaded to ThumbSnap (publicly accessible)
+              ✅ Images uploaded to secure storage (publicly accessible)
             </p>
           </div>
 

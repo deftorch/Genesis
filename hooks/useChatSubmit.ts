@@ -93,62 +93,115 @@ export function useChatSubmit({ chatId, selectedModel }: UseChatSubmitOptions) {
 
     try {
       const imagePayloads = buildImagePayloads(images);
+      const { buildContextForAPI } = await import('@/lib/chat-summarizer');
+      
+      const updatedChat = chatStore.chats.find(c => c.id === currentChatId);
+      const apiMessages = updatedChat 
+        ? buildContextForAPI(
+            updatedChat.messages,
+            updatedChat.summary,
+            updatedChat.lastSummarizedIndex
+          )
+        : newMessages.map((msg) => ({
+            role: msg.type === 'user' ? 'user' : 'assistant',
+            content: msg.content,
+          }));
 
       const response = await fetch('/api/chat', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         signal: controller.signal,
         body: JSON.stringify({
-          messages: newMessages.map((msg) => ({
-            role: msg.type === 'user' ? 'user' : 'assistant',
-            content: msg.content,
-          })),
+          messages: apiMessages,
           model: selectedModel,
           currentCode: ui.editableCode || '',
           images: imagePayloads.length > 0 ? imagePayloads : undefined,
         }),
       });
 
-      const data = await response.json();
+      if (!response.ok) {
+        const errorData = await response.json().catch(() => ({}));
+        throw new Error(errorData.error || `HTTP error! status: ${response.status}`);
+      }
 
-      if (data.error) {
-        const errContent = `Error: ${data.error}`;
-        chatStore.addMessage(currentChatId, {
-          role: 'assistant',
-          content: errContent,
-          tokens: 10,
-        });
-      } else {
-        const aiContent = data.message?.content || 'No response received';
-        chatStore.addMessage(currentChatId, {
-          role: 'assistant',
-          content: aiContent,
-          tokens: Math.ceil(aiContent.length / 4),
-        });
+      if (!response.body) throw new Error('ReadableStream not supported.');
 
-        const extracted = extractCode(aiContent);
-        if (extracted) {
-          if (ui.p5Code) ui.setPreviousCode(ui.p5Code);
-          ui.setP5Code(extracted.code);
-          ui.setEditableCode(extracted.code);
-          ui.setActiveRenderer(extracted.renderer);
-          ui.setActiveTab('preview');
-          ui.setShowArtifact(true);
+      const reader = response.body.getReader();
+      const decoder = new TextDecoder('utf-8');
+      
+      let aiContent = '';
+      const messageId = chatStore.addMessage(currentChatId!, {
+        role: 'assistant',
+        content: '',
+        tokens: 0,
+      });
 
-          const chat = chatStore.chats.find((c) => c.id === currentChatId);
-          const existingArtifact = chatStore.artifacts.find(
-            (a) => a.chatId === currentChatId,
-          );
-          if (existingArtifact) {
-            chatStore.deleteArtifact(existingArtifact.id);
+      let done = false;
+      let buffer = '';
+
+      while (!done) {
+        const { value, done: readerDone } = await reader.read();
+        done = readerDone;
+        if (value) {
+          buffer += decoder.decode(value, { stream: true });
+          const lines = buffer.split('\n');
+          buffer = lines.pop() || '';
+
+          for (const line of lines) {
+            const trimmedLine = line.trim();
+            if (trimmedLine.startsWith('data:')) {
+              const dataStr = trimmedLine.slice(5).trim();
+              if (dataStr === '[DONE]' || !dataStr) continue;
+              
+              try {
+                const data = JSON.parse(dataStr);
+                const textChunk = data.candidates?.[0]?.content?.parts?.[0]?.text;
+                if (textChunk) {
+                  aiContent += textChunk;
+                  chatStore.updateMessageContent(currentChatId!, messageId, aiContent);
+                }
+              } catch (e) {
+                console.warn('Error parsing stream chunk:', e);
+              }
+            }
           }
-          chatStore.addArtifact({
-            chatId: currentChatId!,
-            chatTitle: chat?.title || 'Untitled',
-            code: extracted.code,
-            renderer: extracted.renderer,
-          });
         }
+      }
+
+      // Process any remaining buffer just in case
+      if (buffer.trim().startsWith('data:')) {
+        try {
+          const dataStr = buffer.trim().slice(5).trim();
+          if (dataStr && dataStr !== '[DONE]') {
+            const data = JSON.parse(dataStr);
+            const textChunk = data.candidates?.[0]?.content?.parts?.[0]?.text;
+            if (textChunk) {
+              aiContent += textChunk;
+              chatStore.updateMessageContent(currentChatId!, messageId, aiContent);
+            }
+          }
+        } catch (e) {
+          // Ignore final parse error
+        }
+      }
+
+      // Once done, extract code
+      const extracted = extractCode(aiContent);
+      if (extracted) {
+        if (ui.p5Code) ui.setPreviousCode(ui.p5Code);
+        ui.setP5Code(extracted.code);
+        ui.setEditableCode(extracted.code);
+        ui.setActiveRenderer(extracted.renderer);
+        ui.setActiveTab('preview');
+        ui.setShowArtifact(true);
+
+        const chat = chatStore.chats.find((c) => c.id === currentChatId);
+        chatStore.addArtifact({
+          chatId: currentChatId!,
+          chatTitle: chat?.title || 'Untitled',
+          code: extracted.code,
+          renderer: extracted.renderer,
+        });
       }
     } catch (err: any) {
       if (err.name === 'AbortError') {

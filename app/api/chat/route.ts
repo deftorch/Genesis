@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { callGeminiWithRotation } from '@/lib/gemini-client';
+import { streamGeminiWithRotation } from '@/lib/gemini-client';
 import { chatRateLimiter } from '@/lib/rate-limiter';
 import { sanitizeCodeForPrompt } from '@/lib/sanitize';
 
@@ -231,29 +231,15 @@ Example SVG code format:
 
     const geminiModelId = modelIdMap[model] || 'gemini-3-flash-preview';
 
-    // Call Gemini with Key Rotation
-    const data = await callGeminiWithRotation(geminiModelId, requestBody);
+    // Call Gemini with Key Rotation to get a stream
+    const response = await streamGeminiWithRotation(geminiModelId, requestBody);
 
-    if (!data.candidates || !data.candidates[0]?.content?.parts?.[0]?.text) {
-      console.error('Invalid Gemini response structure:', data);
-      throw new Error('Invalid response from Gemini API');
-    }
-
-    const responseText = data.candidates[0].content.parts[0].text;
-    const estimatedPromptLength = messages.reduce((acc: number, m: any) => acc + (m.content?.length || 0), 0) + systemPrompt.length;
-    const promptTokens = Math.ceil(estimatedPromptLength / 4);
-    const completionTokens = Math.ceil(responseText.length / 4);
-
-    return NextResponse.json({
-      message: {
-        role: 'assistant',
-        content: responseText,
-        tokens: completionTokens,
-      },
-      usage: {
-        promptTokens,
-        completionTokens,
-        totalTokens: promptTokens + completionTokens,
+    // Return the response directly to proxy the SSE stream to the client
+    return new Response(response.body, {
+      headers: {
+        'Content-Type': 'text/event-stream',
+        'Cache-Control': 'no-cache',
+        'Connection': 'keep-alive',
       },
     });
 

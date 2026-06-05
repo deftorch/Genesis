@@ -53,16 +53,24 @@ export const handlers = [
   // Intercept local /api/chat requests (for store-api integration tests)
   http.post('*/api/chat', async ({ request }) => {
     const body: any = await request.json();
-    return HttpResponse.json({
-      message: {
-        role: 'assistant',
-        content: 'Mocked assistant response with code block:\n\n```javascript\n// renderer: d3\nconst a = 1;\n```',
-        tokens: 30
-      },
-      usage: {
-        promptTokens: 10,
-        completionTokens: 30,
-        totalTokens: 40
+    const streamContent = 'data: ' + JSON.stringify({
+      candidates: [
+        {
+          content: {
+            parts: [
+              {
+                text: 'Mocked assistant response with code block:\n\n```javascript\n// renderer: d3\nconst a = 1;\n```'
+              }
+            ],
+            role: 'model'
+          }
+        }
+      ]
+    }) + '\n\n';
+    
+    return new HttpResponse(streamContent, {
+      headers: {
+        'Content-Type': 'text/event-stream'
       }
     });
   }),

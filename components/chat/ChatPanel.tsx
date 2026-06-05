@@ -39,6 +39,8 @@ import {
   PanelLeft,
 } from 'lucide-react';
 
+import { ChatImagePreview } from '@/components/chat/ChatImagePreview';
+
 import { useUIStore } from '@/lib/store/ui-store';
 import { useChatStore } from '@/lib/store/chat-store';
 import { useSettingsStore } from '@/lib/store/settings-store';
@@ -602,25 +604,12 @@ export const ChatPanel: React.FC<ChatPanelProps> = ({
 
             {/* Main input card for home view */}
             <div className="w-full glass-panel rounded-3xl p-4 md:p-5 flex flex-col focus-within:border-[#1a6adf]/45 focus-within:shadow-[0_0_0_3px_rgba(26,106,223,0.10)] dark:focus-within:border-white/20 dark:focus-within:shadow-none transition-all duration-200">
-              {attachedImages.length > 0 && (
-                <div className="flex flex-wrap gap-3 mb-3">
-                  {attachedImages.map((img) => (
-                    <div key={img.id} className="relative group">
-                      <img
-                        src={img.preview || img.url}
-                        alt={img.name}
-                        className="h-28 w-28 object-cover rounded-2xl border border-slate-200 dark:border-white/10 shadow-sm"
-                      />
-                      <button
-                        onClick={() => removeAttachedImage(img.id)}
-                        className="absolute -top-2 -right-2 w-6 h-6 bg-gray-900/80 hover:bg-red-500 text-white rounded-full flex items-center justify-center shadow-lg transition-colors"
-                      >
-                        <X size={14} />
-                      </button>
-                    </div>
-                  ))}
-                </div>
-              )}
+              <ChatImagePreview 
+                images={attachedImages} 
+                onRemoveImage={removeAttachedImage} 
+                imageClassName="h-28 w-28 object-cover rounded-2xl border border-slate-200 dark:border-white/10 shadow-sm"
+                buttonClassName="absolute -top-2 -right-2 w-6 h-6 bg-gray-900/80 hover:bg-red-500 text-white rounded-full flex items-center justify-center shadow-lg transition-colors"
+              />
               <textarea
                 value={ui.inputMessage}
                 onChange={(e) => ui.setInputMessage(e.target.value)}
@@ -1420,25 +1409,10 @@ export const ChatPanel: React.FC<ChatPanelProps> = ({
           <div className="border-t border-[#1e468c]/12 dark:border-white/10 p-4 flex-shrink-0 bg-transparent">
             <div className="max-w-3xl mx-auto">
               <div className="glass-panel rounded-2xl p-4 flex flex-col focus-within:border-[#1a6adf]/45 focus-within:shadow-[0_0_0_3px_rgba(26,106,223,0.10)] dark:focus-within:border-white/20 dark:focus-within:shadow-none transition-all duration-200 shadow-sm">
-                {attachedImages.length > 0 && (
-                  <div className="flex flex-wrap gap-3 mb-3">
-                    {attachedImages.map((img) => (
-                      <div key={img.id} className="relative group">
-                        <img
-                          src={img.preview || img.url}
-                          alt={img.name}
-                          className="h-32 max-w-[180px] object-cover rounded-xl border-2 border-gray-200/50 dark:border-white/10 shadow-sm"
-                        />
-                        <button
-                          onClick={() => removeAttachedImage(img.id)}
-                          className="absolute -top-2 -right-2 w-6 h-6 bg-gray-800/80 hover:bg-red-500 text-white rounded-full flex items-center justify-center shadow-lg transition-colors"
-                        >
-                          <X className="h-3.5 w-3.5" />
-                        </button>
-                      </div>
-                    ))}
-                  </div>
-                )}
+                <ChatImagePreview 
+                  images={attachedImages} 
+                  onRemoveImage={removeAttachedImage} 
+                />
                 <textarea
                   value={ui.inputMessage}
                   onChange={(e) => ui.setInputMessage(e.target.value)}
