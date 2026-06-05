@@ -46,8 +46,8 @@ describe('/api/chat API Route', () => {
     const res = await POST(req);
     expect(res.status).toBe(200);
     const data = await res.json();
-    expect(data.message.role).toBe('assistant');
-    expect(data.message.content).toContain('// renderer: p5');
+    expect(data.candidates[0].content.role).toBe('model');
+    expect(data.candidates[0].content.parts[0].text).toContain('// renderer: p5');
   });
 
   it('should handle daily usage limit quota exhaustion gracefully (status 429)', async () => {

@@ -20,8 +20,9 @@ interface ChatStore {
   getCurrentChat: () => Chat | null;
   importChats: (chats: Chat[]) => void;
   
-  addMessage: (chatId: string, message: Omit<Message, 'id' | 'timestamp'>) => void;
+  addMessage: (chatId: string, message: Omit<Message, 'id' | 'timestamp'>) => string;
   updateMessage: (chatId: string, messageId: string, content: string) => void;
+  updateMessageContent: (chatId: string, messageId: string, content: string) => void;
   switchMessageVersion: (chatId: string, messageId: string, versionIdx: number) => void;
   deleteMessage: (chatId: string, messageId: string) => void;
   updateChatSummary: (chatId: string) => void;
@@ -180,6 +181,8 @@ export const useChatStore = create<ChatStore>()(
         if (chat && shouldUpdateSummary(chat.messages.length, chat.lastSummarizedIndex)) {
           get().updateChatSummary(chatId);
         }
+        
+        return newMessage.id;
       },
 
       updateChatSummary: (chatId: string) => {
@@ -227,6 +230,31 @@ export const useChatStore = create<ChatStore>()(
                     return msg;
                   }),
                   updatedAt: new Date(),
+                }
+              : chat
+          ),
+        }));
+      },
+
+      updateMessageContent: (chatId: string, messageId: string, content: string) => {
+        set((state: ChatStore) => ({
+          chats: state.chats.map((chat: Chat) =>
+            chat.id === chatId
+              ? {
+                  ...chat,
+                  messages: chat.messages.map((msg: Message) => {
+                    if (msg.id === messageId) {
+                      const versions = msg.versions && msg.versions.length > 0 ? [...msg.versions] : [msg.content];
+                      // Just replace the latest version content without creating a new version history entry
+                      versions[versions.length - 1] = content;
+                      return {
+                        ...msg,
+                        content,
+                        versions,
+                      };
+                    }
+                    return msg;
+                  }),
                 }
               : chat
           ),

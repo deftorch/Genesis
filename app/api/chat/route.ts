@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { callGeminiWithRotation } from '@/lib/gemini-client';
+import { streamGeminiWithRotation } from '@/lib/gemini-client';
 import { chatRateLimiter } from '@/lib/rate-limiter';
 import { sanitizeCodeForPrompt } from '@/lib/sanitize';
 
@@ -231,42 +231,15 @@ Example SVG code format:
 
     const geminiModelId = modelIdMap[model] || 'gemini-3-flash-preview';
 
-    // Call Gemini with Key Rotation
-    const data = await callGeminiWithRotation(geminiModelId, requestBody);
+    // Call Gemini with Key Rotation to get a stream
+    const response = await streamGeminiWithRotation(geminiModelId, requestBody);
 
-    if (!data.candidates || !data.candidates[0]?.content?.parts?.[0]?.text) {
-      console.error('Invalid Gemini response structure:', data);
-      throw new Error('Invalid response from Gemini API');
-    }
-
-    const responseText = data.candidates[0].content.parts[0].text;
-    
-    // Gunakan actual token count dari Gemini API jika tersedia, fallback ke estimasi jika tidak
-    let promptTokens = 0;
-    let completionTokens = 0;
-    let totalTokens = 0;
-    
-    if (data.usageMetadata) {
-      promptTokens = data.usageMetadata.promptTokenCount || 0;
-      completionTokens = data.usageMetadata.candidatesTokenCount || 0;
-      totalTokens = data.usageMetadata.totalTokenCount || (promptTokens + completionTokens);
-    } else {
-      const estimatedPromptLength = messages.reduce((acc: number, m: any) => acc + (m.content?.length || 0), 0) + systemPrompt.length;
-      promptTokens = Math.ceil(estimatedPromptLength / 4);
-      completionTokens = Math.ceil(responseText.length / 4);
-      totalTokens = promptTokens + completionTokens;
-    }
-
-    return NextResponse.json({
-      message: {
-        role: 'assistant',
-        content: responseText,
-        tokens: completionTokens,
-      },
-      usage: {
-        promptTokens,
-        completionTokens,
-        totalTokens,
+    // Return the response directly to proxy the SSE stream to the client
+    return new Response(response.body, {
+      headers: {
+        'Content-Type': 'text/event-stream',
+        'Cache-Control': 'no-cache',
+        'Connection': 'keep-alive',
       },
     });
 
