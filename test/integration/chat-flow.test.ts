@@ -65,7 +65,6 @@ describe('Chat Flow Integration (Store + API)', () => {
 
     if (extracted) {
       useChatStore.getState().addArtifact({
-        id: 'art-1',
         chatId,
         chatTitle: state.chats[0].title,
         code: extracted.code,
