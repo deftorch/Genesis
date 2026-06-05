@@ -19,7 +19,8 @@ export function useImageAnalysis() {
       try {
         setIsAnalyzing(true);
 
-        // TODO: Replace with actual Google Cloud Vision API call
+        // NOTE: Saat ini menggunakan Gemini untuk analisis gambar.
+        // Google Cloud Vision API dipertimbangkan untuk fase berikutnya.
         // Simulate API call
         await new Promise((resolve) => setTimeout(resolve, 2000));
 

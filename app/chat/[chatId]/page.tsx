@@ -10,7 +10,7 @@ import {
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Logo } from '@/components/ui/logo';
-import { Sidebar } from '@/components/sidebar/Sidebar';
+import { Sidebar } from '@/components/layout/Sidebar';
 import { ChatMessage } from '@/components/chat/ChatMessage';
 import { ChatInput } from '@/components/chat/ChatInput';
 import { TypingIndicator } from '@/components/chat/TypingIndicator';
@@ -21,6 +21,7 @@ import { Modal, ModalHeader, ModalContent } from '@/components/ui/modal';
 import { useChatStore } from '@/lib/store/chat-store';
 import { useSettingsStore } from '@/lib/store/settings-store';
 import { useToast } from '@/lib/store/toast-store';
+import { useUIStore } from '@/lib/store/ui-store';
 import { estimateTokenCount } from '@/lib/utils';
 import { ImageAttachment, AIModel } from '@/types';
 import { AI_MODELS, API_CONFIG } from '@/config/constants';
@@ -30,7 +31,6 @@ export default function ChatPage() {
   const router = useRouter();
   const chatId = params.chatId as string;
 
-  const [isSidebarOpen, setIsSidebarOpen] = React.useState(false);
   const [isSettingsOpen, setIsSettingsOpen] = React.useState(false);
   const [isImageAnalysisOpen, setIsImageAnalysisOpen] = React.useState(false);
   const [isGenerating, setIsGenerating] = React.useState(false);
@@ -41,13 +41,17 @@ export default function ChatPage() {
   // Prevent hydration mismatch
   React.useEffect(() => {
     setIsMounted(true);
-    setIsSidebarOpen(window.innerWidth >= 1024);
+    if (window.innerWidth >= 1024) {
+      useUIStore.getState().setSidebarOpen(true);
+    }
   }, []);
 
   const {
     chats,
     getCurrentChat,
     setCurrentChat,
+    createChat,
+    deleteChat,
     addMessage,
     autoRenameChat,
     updateMessage,
@@ -56,6 +60,7 @@ export default function ChatPage() {
     switchMessageVersion,
   } = useChatStore();
 
+  const ui = useUIStore();
   const { preferences, setTheme } = useSettingsStore();
   const { success, error } = useToast();
 
@@ -419,16 +424,27 @@ export default function ChatPage() {
 
   return (
     <div className="flex h-screen bg-background overflow-hidden">
-      {isSidebarOpen && (
-        <div
-          className="fixed inset-0 bg-black/60 backdrop-blur-sm z-30 lg:hidden transition-opacity"
-          onClick={() => setIsSidebarOpen(false)}
-        />
-      )}
-      
       <Sidebar 
-        isOpen={isSidebarOpen} 
-        onClose={() => setIsSidebarOpen(false)} 
+        onSelectChat={(id) => {
+          setCurrentChat(id);
+          router.push(`/chat/${id}`);
+          if (window.innerWidth < 768) ui.setSidebarOpen(false);
+        }}
+        onStartNewChat={() => {
+          const newId = createChat();
+          router.push(`/chat/${newId}`);
+          if (window.innerWidth < 768) ui.setSidebarOpen(false);
+        }}
+        onDeleteChat={(id) => {
+          if (confirm('Are you sure you want to delete this chat?')) {
+            deleteChat(id);
+            if (id === chatId) router.push('/');
+          }
+        }}
+        onOpenGallery={() => {
+          router.push('/?view=gallery');
+        }}
+        hydrated={isMounted}
       />
 
       <div className="flex-1 flex flex-col min-w-0">
@@ -437,7 +453,7 @@ export default function ChatPage() {
             <Button
               variant="ghost"
               size="icon"
-              onClick={() => setIsSidebarOpen(!isSidebarOpen)}
+              onClick={() => ui.setSidebarOpen(!ui.sidebarOpen)}
               className="shrink-0 h-9 w-9"
             >
               <Menu className="h-5 w-5" />

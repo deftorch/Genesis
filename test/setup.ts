@@ -5,7 +5,8 @@ import { beforeAll, afterAll, afterEach } from 'vitest';
 
 // Define default mock environment variables
 process.env.GEMINI_API_KEY = 'mock-api-key';
-process.env.THUMBSNAP_API_KEY = 'mock-thumbsnap-key';
+process.env.NEXT_PUBLIC_SUPABASE_URL = 'https://mock.supabase.co';
+process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY = 'mock-anon-key';
 
 export const server = setupServer(...handlers);
 

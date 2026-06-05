@@ -1,18 +1,27 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { API_CONFIG, IMAGE_ANALYSIS_MODELS } from '@/config/constants';
 import { callGeminiWithRotation } from '@/lib/gemini-client';
+import { analysisRateLimiter } from '@/lib/rate-limiter';
 
 export async function POST(request: NextRequest) {
+  const ip = request.headers.get('x-forwarded-for')
+          ?? request.headers.get('x-real-ip')
+          ?? 'anonymous';
+
+  try {
+    analysisRateLimiter.check(15, ip);
+  } catch {
+    return NextResponse.json(
+      { error: 'Too many analysis requests. Please slow down.' },
+      { status: 429, headers: { 'Retry-After': '60' } }
+    );
+  }
+
   try {
     const body = await request.json();
     const { imageUrl, prompt, analysisType, modelId = 'gemini-native' } = body;
 
-    // console.log('=== IMAGE ANALYSIS API DEBUG ===');
-    // console.log('Image URL:', imageUrl);
-    // console.log('Prompt:', prompt);
-    // console.log('Analysis Type:', analysisType);
-    // console.log('Model ID:', modelId);
-    // console.log('=================================');
+
 
     if (!imageUrl) {
       return NextResponse.json(
@@ -30,7 +39,7 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // console.log('Selected Model:', selectedModel);
+
 
     // Validate API keys based on model type
     if (selectedModel.apiType === 'gemini-native' && !API_CONFIG.GEMINI_API_KEY) {
@@ -271,7 +280,6 @@ Analisis gambar dengan cermat dan berikan jawaban yang komprehensif.` :
     // Route to appropriate API based on model type
     if (selectedModel.apiType === 'gemini-native') {
       // Use Google Gemini Native API
-      // console.log('Using Gemini Native API...');
 
       const requestBody = {
         contents: [
@@ -309,7 +317,6 @@ Analisis gambar dengan cermat dan berikan jawaban yang komprehensif.` :
 
     } else if (selectedModel.apiType === 'openrouter') {
       // Use OpenRouter API (OpenAI-compatible)
-      // console.log('Using OpenRouter API with model:', selectedModel.modelId);
 
       // OpenRouter requires public image URL, not base64
       const openRouterBody = {
@@ -335,7 +342,7 @@ Analisis gambar dengan cermat dan berikan jawaban yang komprehensif.` :
         temperature: 0.4,
       };
 
-      // console.log('OpenRouter Request Body:', JSON.stringify(openRouterBody, null, 2));
+
 
       const openRouterResponse = await fetch(
         'https://openrouter.ai/api/v1/chat/completions',
@@ -393,7 +400,7 @@ Analisis gambar dengan cermat dan berikan jawaban yang komprehensif.` :
       }
 
       const data = await openRouterResponse.json();
-      // console.log('OpenRouter response:', JSON.stringify(data, null, 2));
+
 
       if (!data.choices || !data.choices[0]?.message?.content) {
         console.error('Invalid OpenRouter response structure:', data);

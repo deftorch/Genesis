@@ -240,9 +240,22 @@ Example SVG code format:
     }
 
     const responseText = data.candidates[0].content.parts[0].text;
-    const estimatedPromptLength = messages.reduce((acc: number, m: any) => acc + (m.content?.length || 0), 0) + systemPrompt.length;
-    const promptTokens = Math.ceil(estimatedPromptLength / 4);
-    const completionTokens = Math.ceil(responseText.length / 4);
+    
+    // Gunakan actual token count dari Gemini API jika tersedia, fallback ke estimasi jika tidak
+    let promptTokens = 0;
+    let completionTokens = 0;
+    let totalTokens = 0;
+    
+    if (data.usageMetadata) {
+      promptTokens = data.usageMetadata.promptTokenCount || 0;
+      completionTokens = data.usageMetadata.candidatesTokenCount || 0;
+      totalTokens = data.usageMetadata.totalTokenCount || (promptTokens + completionTokens);
+    } else {
+      const estimatedPromptLength = messages.reduce((acc: number, m: any) => acc + (m.content?.length || 0), 0) + systemPrompt.length;
+      promptTokens = Math.ceil(estimatedPromptLength / 4);
+      completionTokens = Math.ceil(responseText.length / 4);
+      totalTokens = promptTokens + completionTokens;
+    }
 
     return NextResponse.json({
       message: {
@@ -253,7 +266,7 @@ Example SVG code format:
       usage: {
         promptTokens,
         completionTokens,
-        totalTokens: promptTokens + completionTokens,
+        totalTokens,
       },
     });
 

@@ -2,8 +2,6 @@ import { AIModel, AIProvider, ModelConfig } from '@/types';
 
 // API Configuration
 export const API_CONFIG = {
-  THUMBSNAP_API_URL: 'https://thumbsnap.com/api/upload',
-  THUMBSNAP_API_KEY: process.env.THUMBSNAP_API_KEY || '',
   GEMINI_API_KEY: process.env.GEMINI_API_KEY || '',
   GEMINI_MODEL_ID: 'gemini-3-flash-preview',
   // OpenRouter API - Requires account at https://openrouter.ai

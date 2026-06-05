@@ -9,6 +9,7 @@ describe('/api/upload-image API Route', () => {
       get: (key: string) => null,
     };
     const req = {
+      headers: new Headers(),
       formData: async () => mockFormData,
     } as unknown as Request;
 
@@ -28,6 +29,7 @@ describe('/api/upload-image API Route', () => {
       get: (key: string) => mockFile,
     };
     const req = {
+      headers: new Headers(),
       formData: async () => mockFormData,
     } as unknown as Request;
 
@@ -48,6 +50,7 @@ describe('/api/upload-image API Route', () => {
       get: (key: string) => mockFile,
     };
     const req = {
+      headers: new Headers(),
       formData: async () => mockFormData,
     } as unknown as Request;
 
@@ -57,17 +60,9 @@ describe('/api/upload-image API Route', () => {
     expect(data.error).toContain('Invalid image signature');
   });
 
-  it('should upload successfully to ThumbSnap when magic bytes are correct', async () => {
-    server.use(
-      http.post('https://thumbsnap.com/api/upload', () => {
-        return HttpResponse.json({
-          data: {
-            thumb: 'https://thumbsnap.com/i/thumb.jpg',
-            url: 'https://thumbsnap.com/i/real.jpg',
-          },
-        });
-      })
-    );
+  it('should return 501 when Supabase is not configured', async () => {
+    const oldUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
+    delete process.env.NEXT_PUBLIC_SUPABASE_URL;
 
     const mockFile = {
       name: 'correct.png',
@@ -79,33 +74,22 @@ describe('/api/upload-image API Route', () => {
       get: (key: string) => mockFile,
     };
     const req = {
+      headers: new Headers(),
       formData: async () => mockFormData,
     } as unknown as Request;
 
     const res = await POST(req);
-    expect(res.status).toBe(200);
+    expect(res.status).toBe(501);
     const data = await res.json();
-    expect(data.success).toBe(true);
-    expect(data.provider).toBe('thumbsnap');
-    expect(data.url).toBe('https://thumbsnap.com/i/thumb.jpg');
+    expect(data.error).toContain('Supabase storage is not configured');
+
+    process.env.NEXT_PUBLIC_SUPABASE_URL = oldUrl;
   });
 
-  it('should fallback to qu.ax upload when ThumbSnap fails', async () => {
+  it('should upload successfully to Supabase Storage when magic bytes are correct', async () => {
     server.use(
-      http.post('https://thumbsnap.com/api/upload', () => {
-        return new HttpResponse('Internal Server Error', { status: 500 });
-      }),
-      http.post('https://qu.ax/upload.php', () => {
-        return HttpResponse.json({
-          success: true,
-          files: [
-            {
-              url: 'https://qu.ax/image123.png',
-              name: 'image123.png',
-              expiry: '30',
-            },
-          ],
-        });
+      http.post('https://mock.supabase.co/storage/v1/object/genesis-images/*', () => {
+        return HttpResponse.json({ Key: 'test-key' });
       })
     );
 
@@ -119,6 +103,7 @@ describe('/api/upload-image API Route', () => {
       get: (key: string) => mockFile,
     };
     const req = {
+      headers: new Headers(),
       formData: async () => mockFormData,
     } as unknown as Request;
 
@@ -126,7 +111,7 @@ describe('/api/upload-image API Route', () => {
     expect(res.status).toBe(200);
     const data = await res.json();
     expect(data.success).toBe(true);
-    expect(data.provider).toBe('qu.ax');
-    expect(data.url).toBe('https://qu.ax/image123.png');
+    expect(data.provider).toBe('supabase');
+    expect(data.url).toContain('https://mock.supabase.co/storage/v1/object/public/genesis-images/');
   });
 });

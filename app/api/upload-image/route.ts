@@ -1,7 +1,21 @@
 import { NextResponse } from 'next/server';
 import { API_CONFIG } from '@/config/constants';
+import { uploadRateLimiter } from '@/lib/rate-limiter';
 
 export async function POST(req: Request) {
+  const ip = req.headers.get('x-forwarded-for')
+          ?? req.headers.get('x-real-ip')
+          ?? 'anonymous';
+
+  try {
+    uploadRateLimiter.check(10, ip);
+  } catch {
+    return NextResponse.json(
+      { error: 'Too many upload requests. Please slow down.' },
+      { status: 429, headers: { 'Retry-After': '60' } }
+    );
+  }
+
   try {
     const formData = await req.formData();
     const file = formData.get('file') as File;
@@ -55,82 +69,58 @@ export async function POST(req: Request) {
       );
     }
 
-    // console.log('=== THUMBSNAP UPLOAD DEBUG ===');
-    // console.log('File name:', file.name);
-    // console.log('File size:', file.size);
-    // console.log('File type:', file.type);
-    // console.log('==============================');
+    // Check if Supabase is configured
+    if (!process.env.NEXT_PUBLIC_SUPABASE_URL || !process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY) {
+      return NextResponse.json(
+        { error: 'Supabase storage is not configured. Please add NEXT_PUBLIC_SUPABASE_URL and NEXT_PUBLIC_SUPABASE_ANON_KEY to your environment.' },
+        { status: 501 }
+      );
+    }
 
-    // Try ThumbSnap first
+    const { createClient } = await import('@supabase/supabase-js');
+    const supabase = createClient(
+      process.env.NEXT_PUBLIC_SUPABASE_URL,
+      process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY
+    );
+
+    // Generate unique filename
+    const fileExt = file.name.split('.').pop() || 'jpg';
+    const fileName = `${Date.now()}-${Math.random().toString(36).substring(7)}.${fileExt}`;
+
     try {
-      // console.log('Trying ThumbSnap upload...');
-      const uploadFormData = new FormData();
-      uploadFormData.append('media', file);
-      uploadFormData.append('key', API_CONFIG.THUMBSNAP_API_KEY);
+      // Upload to Supabase Storage
+      const { data: uploadData, error: uploadError } = await supabase.storage
+        .from('genesis-images')
+        .upload(fileName, file, {
+          contentType: file.type,
+          upsert: false
+        });
 
-      const response = await fetch(API_CONFIG.THUMBSNAP_API_URL, {
-        method: 'POST',
-        body: uploadFormData,
+      if (uploadError) {
+        console.error('Supabase upload error:', uploadError);
+        throw new Error(uploadError.message);
+      }
+
+      // Get public URL
+      const { data: { publicUrl } } = supabase.storage
+        .from('genesis-images')
+        .getPublicUrl(fileName);
+
+      return NextResponse.json({
+        success: true,
+        url: publicUrl,
+        filename: file.name,
+        provider: 'supabase'
       });
-
-      const data = await response.json();
-      
-      // console.log('ThumbSnap response:', data);
-
-      if (response.ok && data.data?.thumb) {
-        // ThumbSnap success
-        return NextResponse.json({
-          success: true,
-          url: data.data.thumb,
-          pageUrl: data.data.url,
-          filename: file.name,
-          provider: 'thumbsnap'
-        });
-      }
-      
-      // ThumbSnap failed, try qu.ax
-      throw new Error('ThumbSnap failed, trying backup...');
-    } catch (thumbsnapError: any) {
-      console.error('ThumbSnap error:', thumbsnapError.message);
-      // console.log('Trying qu.ax as backup...');
-
-      try {
-        // Fallback to qu.ax
-        const quaxFormData = new FormData();
-        quaxFormData.append('files[]', file);
-        quaxFormData.append('expiry', '30'); // 30 days expiry
-
-        const quaxResponse = await fetch('https://qu.ax/upload.php', {
-          method: 'POST',
-          body: quaxFormData,
-        });
-
-        const quaxData = await quaxResponse.json();
-        
-        // console.log('qu.ax response:', quaxData);
-
-        if (!quaxResponse.ok || !quaxData.success || !quaxData.files?.[0]?.url) {
-          throw new Error('Failed to upload to qu.ax');
-        }
-
-        // qu.ax success
-        return NextResponse.json({
-          success: true,
-          url: quaxData.files[0].url,
-          filename: quaxData.files[0].name,
-          expiry: quaxData.files[0].expiry,
-          provider: 'qu.ax'
-        });
-      } catch (quaxError: any) {
-        console.error('qu.ax error:', quaxError);
-        return NextResponse.json(
-          { 
-            error: 'Both ThumbSnap and qu.ax failed',
-            details: 'Please try again later or use a different image'
-          },
-          { status: 500 }
-        );
-      }
+    } catch (storageError: any) {
+      console.error('Storage error:', storageError);
+      return NextResponse.json(
+        { 
+          error: 'Failed to upload image to storage',
+          details: storageError.message 
+        },
+        { status: 500 }
+      );
     }
   } catch (error: any) {
     console.error('Image upload error:', error);

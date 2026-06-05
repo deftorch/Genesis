@@ -93,16 +93,26 @@ export function useChatSubmit({ chatId, selectedModel }: UseChatSubmitOptions) {
 
     try {
       const imagePayloads = buildImagePayloads(images);
+      const { buildContextForAPI } = await import('@/lib/chat-summarizer');
+      
+      const updatedChat = chatStore.chats.find(c => c.id === currentChatId);
+      const apiMessages = updatedChat 
+        ? buildContextForAPI(
+            updatedChat.messages,
+            updatedChat.summary,
+            updatedChat.lastSummarizedIndex
+          )
+        : newMessages.map((msg) => ({
+            role: msg.type === 'user' ? 'user' : 'assistant',
+            content: msg.content,
+          }));
 
       const response = await fetch('/api/chat', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         signal: controller.signal,
         body: JSON.stringify({
-          messages: newMessages.map((msg) => ({
-            role: msg.type === 'user' ? 'user' : 'assistant',
-            content: msg.content,
-          })),
+          messages: apiMessages,
           model: selectedModel,
           currentCode: ui.editableCode || '',
           images: imagePayloads.length > 0 ? imagePayloads : undefined,
@@ -136,12 +146,6 @@ export function useChatSubmit({ chatId, selectedModel }: UseChatSubmitOptions) {
           ui.setShowArtifact(true);
 
           const chat = chatStore.chats.find((c) => c.id === currentChatId);
-          const existingArtifact = chatStore.artifacts.find(
-            (a) => a.chatId === currentChatId,
-          );
-          if (existingArtifact) {
-            chatStore.deleteArtifact(existingArtifact.id);
-          }
           chatStore.addArtifact({
             chatId: currentChatId!,
             chatTitle: chat?.title || 'Untitled',
