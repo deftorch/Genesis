@@ -8,7 +8,7 @@ export const API_CONFIG = {
   // Get your API key at: https://openrouter.ai/keys
   // Note: Free models available after registration
   OPENROUTER_API_KEY: process.env.OPENROUTER_API_KEY || '',
-  OPENROUTER_SITE_URL: process.env.NEXT_PUBLIC_SITE_URL || 'https://chat.fsu.my.id',
+  OPENROUTER_SITE_URL: process.env.NEXT_PUBLIC_SITE_URL || 'http://localhost:3000',
   OPENROUTER_SITE_NAME: 'Genesis',
 };
 

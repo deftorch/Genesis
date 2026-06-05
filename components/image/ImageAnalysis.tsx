@@ -83,11 +83,6 @@ export const ImageAnalysis: React.FC<ImageAnalysisProps> = ({ onClose }) => {
 
       const analysisData = await analysisResponse.json();
 
-      console.log('=== ANALYSIS RESPONSE DEBUG ===');
-      console.log('Status:', analysisResponse.status);
-      console.log('Response Data:', analysisData);
-      console.log('================================');
-
       if (!analysisResponse.ok) {
         throw new Error(analysisData.error || analysisData.details || 'Failed to analyze image');
       }
@@ -98,10 +93,12 @@ export const ImageAnalysis: React.FC<ImageAnalysisProps> = ({ onClose }) => {
 
       setResult(analysisData);
     } catch (error: any) {
-      console.error('=== FRONTEND ANALYSIS ERROR ===');
-      console.error('Error:', error);
-      console.error('Error Message:', error.message);
-      console.error('================================');
+      if (process.env.NODE_ENV !== 'production') {
+        console.error('=== FRONTEND ANALYSIS ERROR ===');
+        console.error('Error:', error);
+        console.error('Error Message:', error.message);
+        console.error('================================');
+      }
       
       // Create user-friendly error display
       const errorMessage = error.message || 'Failed to analyze image';

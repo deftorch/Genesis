@@ -23,6 +23,8 @@ interface ChatStore {
   addMessage: (chatId: string, message: Omit<Message, 'id' | 'timestamp'>) => string;
   updateMessage: (chatId: string, messageId: string, content: string) => void;
   updateMessageContent: (chatId: string, messageId: string, content: string) => void;
+  updateMessageTokens: (chatId: string, messageId: string, tokens: number) => void;
+  updateChatTokens: (chatId: string, tokens: number) => void;
   switchMessageVersion: (chatId: string, messageId: string, versionIdx: number) => void;
   deleteMessage: (chatId: string, messageId: string) => void;
   updateChatSummary: (chatId: string) => void;
@@ -256,6 +258,31 @@ export const useChatStore = create<ChatStore>()(
                     return msg;
                   }),
                 }
+              : chat
+          ),
+        }));
+      },
+
+      updateMessageTokens: (chatId: string, messageId: string, tokens: number) => {
+        set((state: ChatStore) => ({
+          chats: state.chats.map((chat: Chat) =>
+            chat.id === chatId
+              ? {
+                  ...chat,
+                  messages: chat.messages.map((msg: Message) =>
+                    msg.id === messageId ? { ...msg, tokens } : msg
+                  ),
+                }
+              : chat
+          ),
+        }));
+      },
+
+      updateChatTokens: (chatId: string, tokens: number) => {
+        set((state: ChatStore) => ({
+          chats: state.chats.map((chat: Chat) =>
+            chat.id === chatId
+              ? { ...chat, totalTokens: chat.totalTokens + tokens }
               : chat
           ),
         }));

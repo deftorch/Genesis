@@ -9,20 +9,68 @@ test.describe('Genesis Chat Application E2E Tests', () => {
         state: { preferences: { developerMode: true, theme: 'system', fontSize: 'medium', autoSave: true, showTokenCount: false, enableNotifications: true } },
         version: 0
       }));
+      window.localStorage.setItem('chat-storage', JSON.stringify({
+        state: {
+          chats: [
+            {
+              id: 'chat-1',
+              title: 'Bouncing Ball Animation',
+              messages: [],
+              createdAt: new Date().toISOString(),
+              updatedAt: new Date().toISOString(),
+              isStarred: false,
+              totalTokens: 0,
+              modelConfig: { id: 'def', provider: 'google', model: 'gemini-3-flash' }
+            },
+            {
+              id: 'chat-2',
+              title: 'Particle System',
+              messages: [],
+              createdAt: new Date().toISOString(),
+              updatedAt: new Date().toISOString(),
+              isStarred: false,
+              totalTokens: 0,
+              modelConfig: { id: 'def', provider: 'google', model: 'gemini-3-flash' }
+            },
+            {
+              id: 'chat-3',
+              title: 'Fractal Tree',
+              messages: [],
+              createdAt: new Date().toISOString(),
+              updatedAt: new Date().toISOString(),
+              isStarred: false,
+              totalTokens: 0,
+              modelConfig: { id: 'def', provider: 'google', model: 'gemini-3-flash' }
+            },
+            {
+              id: 'chat-4',
+              title: 'Wave Pattern',
+              messages: [],
+              createdAt: new Date().toISOString(),
+              updatedAt: new Date().toISOString(),
+              isStarred: false,
+              totalTokens: 0,
+              modelConfig: { id: 'def', provider: 'google', model: 'gemini-3-flash' }
+            }
+          ],
+          currentChatId: null,
+          projects: [],
+          artifacts: []
+        },
+        version: 0
+      }));
     });
 
-    // Intercept /api/chat requests and return a mock AI response with a code block
+    // Intercept /api/chat requests and return a mock AI response with a code block matching SSE stream format
     await page.route('**/api/chat', async (route) => {
+      const responseText = 'Here is your custom visualizer code!\\n\\n```javascript\\n// renderer: p5\\nfunction setup() {\\n  createCanvas(400, 400);\\n}\\nfunction draw() {\\n  background(100, 200, 255);\\n  fill(255);\\n  ellipse(200, 200, 100);\\n}\\n```';
+      const chunk = JSON.stringify({
+        candidates: [{ content: { parts: [{ text: responseText }] } }]
+      });
       await route.fulfill({
         status: 200,
-        contentType: 'application/json',
-        body: JSON.stringify({
-          message: {
-            role: 'assistant',
-            content: 'Here is your custom visualizer code!\n\n```javascript\n// renderer: p5\nfunction setup() {\n  createCanvas(400, 400);\n}\nfunction draw() {\n  background(100, 200, 255);\n  fill(255);\n  ellipse(200, 200, 100);\n}\n```',
-            tokens: 45
-          }
-        }),
+        contentType: 'text/event-stream',
+        body: `data: ${chunk}\n\ndata: [DONE]\n\n`,
       });
     });
 

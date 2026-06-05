@@ -1,6 +1,19 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { callGeminiWithRotation } from '@/lib/gemini-client';
 import { analysisRateLimiter } from '@/lib/rate-limiter';
+import { logger } from '@/lib/logger';
+
+import * as z from 'zod';
+
+const ImageAnalysisRequestSchema = z.object({
+  imageUrl: z.string().url().max(2000),
+  text: z.string().max(2000).optional(),
+  sessionId: z.string().optional(),
+  messages: z.array(z.object({
+    role: z.enum(['user', 'assistant', 'system', 'model']),
+    content: z.string().max(50000),
+  })).max(100).optional(),
+});
 
 export async function POST(request: NextRequest) {
   const ip = request.headers.get('x-forwarded-for')
@@ -17,15 +30,17 @@ export async function POST(request: NextRequest) {
   }
 
   try {
-    const body = await request.json();
-    const { imageUrl, text, sessionId, messages = [] } = body;
+    const rawBody = await request.json();
+    const parseResult = ImageAnalysisRequestSchema.safeParse(rawBody);
 
-    if (!imageUrl) {
+    if (!parseResult.success) {
       return NextResponse.json(
-        { error: 'No image URL provided' },
+        { error: 'Invalid request payload', details: parseResult.error.flatten() },
         { status: 400 }
       );
     }
+
+    const { imageUrl, text, sessionId, messages = [] } = parseResult.data;
 
     // Build conversation context - limit to last 5 messages to avoid token limit
     let conversationContext = '';
@@ -69,11 +84,15 @@ export async function POST(request: NextRequest) {
     const imageBuffer = await imageResponse.arrayBuffer();
     base64Image = Buffer.from(imageBuffer).toString('base64');
     
-    mimeType = imageUrl.toLowerCase().endsWith('.png') 
-      ? 'image/png' 
-      : imageUrl.toLowerCase().endsWith('.webp')
-      ? 'image/webp'
-      : 'image/jpeg';
+    const contentTypeHeader = imageResponse.headers.get('content-type');
+    const rawMime = contentTypeHeader?.split(';')[0].trim() || '';
+    
+    const SUPPORTED_MIMES = ['image/jpeg', 'image/png', 'image/webp', 'image/gif'];
+    mimeType = SUPPORTED_MIMES.includes(rawMime) ? rawMime : 'image/jpeg';
+
+    if (!SUPPORTED_MIMES.includes(rawMime)) {
+      logger.warn('Unrecognized MIME type in image-analysis, defaulting to image/jpeg', { rawMime });
+    }
 
     const requestBody = {
       contents: [
@@ -118,7 +137,7 @@ export async function POST(request: NextRequest) {
       provider: 'google',
     });
   } catch (error: any) {
-    console.error('Image analysis API error:', error);
+    logger.error('Image analysis API error', { error: error.message, stack: error.stack });
     return NextResponse.json(
       { error: error.message || 'Failed to analyze image' },
       { status: 500 }

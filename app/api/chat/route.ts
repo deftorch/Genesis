@@ -2,6 +2,23 @@ import { NextRequest, NextResponse } from 'next/server';
 import { streamGeminiWithRotation } from '@/lib/gemini-client';
 import { chatRateLimiter } from '@/lib/rate-limiter';
 import { sanitizeCodeForPrompt } from '@/lib/sanitize';
+import { logger } from '@/lib/logger';
+
+import * as z from 'zod';
+
+const ChatRequestSchema = z.object({
+  messages: z.array(z.object({
+    role: z.enum(['user', 'assistant', 'system']),
+    content: z.string().max(50000),
+  })).min(1).max(100),
+  model: z.string().optional(),
+  currentCode: z.string().max(500000).optional(),
+  images: z.array(z.object({
+    base64: z.string().optional(),
+    mimeType: z.string().optional(),
+    url: z.string().url().optional(),
+  })).max(10).optional(),
+});
 
 export async function POST(req: Request) {
   const ip = req.headers.get('x-forwarded-for') 
@@ -18,15 +35,18 @@ export async function POST(req: Request) {
   }
 
   try {
-    const { messages, model, currentCode: rawCurrentCode, images } = await req.json();
-    const currentCode = rawCurrentCode ? sanitizeCodeForPrompt(rawCurrentCode) : '';
-
-    if (!messages || messages.length === 0) {
+    const rawBody = await req.json();
+    const parseResult = ChatRequestSchema.safeParse(rawBody);
+    
+    if (!parseResult.success) {
       return NextResponse.json(
-        { error: 'No messages provided' },
+        { error: 'Invalid request payload', details: parseResult.error.flatten() },
         { status: 400 }
       );
     }
+
+    const { messages, model, currentCode: rawCurrentCode, images } = parseResult.data;
+    const currentCode = rawCurrentCode ? sanitizeCodeForPrompt(rawCurrentCode) : '';
 
     // Get the last user message
     const lastMessage = messages[messages.length - 1];
@@ -229,7 +249,7 @@ Example SVG code format:
       'gemini-2.5-flash-lite': 'gemini-2.5-flash-lite',
     };
 
-    const geminiModelId = modelIdMap[model] || 'gemini-3-flash-preview';
+    const geminiModelId = (model ? modelIdMap[model] : undefined) || 'gemini-3-flash-preview';
 
     // Call Gemini with Key Rotation to get a stream
     const response = await streamGeminiWithRotation(geminiModelId, requestBody);
@@ -244,7 +264,7 @@ Example SVG code format:
     });
 
   } catch (error: any) {
-    console.error('Chat API error:', error);
+    logger.error('Chat API error', { error: error.message, stack: error.stack });
     const isQuota = error.status === 429 || error.message?.toLowerCase().includes('quota') || error.message?.toLowerCase().includes('429');
     
     return NextResponse.json(

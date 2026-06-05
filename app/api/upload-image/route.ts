@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server';
 import { API_CONFIG } from '@/config/constants';
 import { uploadRateLimiter } from '@/lib/rate-limiter';
+import { logger } from '@/lib/logger';
 
 export async function POST(req: Request) {
   const ip = req.headers.get('x-forwarded-for')
@@ -97,7 +98,7 @@ export async function POST(req: Request) {
         });
 
       if (uploadError) {
-        console.error('Supabase upload error:', uploadError);
+        logger.error('Supabase upload error', { error: uploadError.message });
         throw new Error(uploadError.message);
       }
 
@@ -113,7 +114,7 @@ export async function POST(req: Request) {
         provider: 'supabase'
       });
     } catch (storageError: any) {
-      console.error('Storage error:', storageError);
+      logger.error('Storage error', { error: storageError.message });
       return NextResponse.json(
         { 
           error: 'Failed to upload image to storage',
@@ -123,7 +124,7 @@ export async function POST(req: Request) {
       );
     }
   } catch (error: any) {
-    console.error('Image upload error:', error);
+    logger.error('Image upload error', { error: error.message, stack: error.stack });
     return NextResponse.json(
       { error: error.message || 'Failed to upload image' },
       { status: 500 }

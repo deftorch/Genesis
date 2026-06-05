@@ -85,7 +85,7 @@ export function useChatSubmit({ chatId, selectedModel }: UseChatSubmitOptions) {
     chatStore.addMessage(currentChatId, {
       role: 'user',
       content: messageToSend,
-      tokens: Math.ceil(messageToSend.length / 4),
+      tokens: 0,
     });
 
     const controller = new AbortController();
@@ -138,6 +138,7 @@ export function useChatSubmit({ chatId, selectedModel }: UseChatSubmitOptions) {
 
       let done = false;
       let buffer = '';
+      let finalUsageMetadata: { promptTokenCount?: number; candidatesTokenCount?: number } | null = null;
 
       while (!done) {
         const { value, done: readerDone } = await reader.read();
@@ -155,6 +156,9 @@ export function useChatSubmit({ chatId, selectedModel }: UseChatSubmitOptions) {
               
               try {
                 const data = JSON.parse(dataStr);
+                if (data.usageMetadata) {
+                  finalUsageMetadata = data.usageMetadata;
+                }
                 const textChunk = data.candidates?.[0]?.content?.parts?.[0]?.text;
                 if (textChunk) {
                   aiContent += textChunk;
@@ -174,6 +178,9 @@ export function useChatSubmit({ chatId, selectedModel }: UseChatSubmitOptions) {
           const dataStr = buffer.trim().slice(5).trim();
           if (dataStr && dataStr !== '[DONE]') {
             const data = JSON.parse(dataStr);
+            if (data.usageMetadata) {
+              finalUsageMetadata = data.usageMetadata;
+            }
             const textChunk = data.candidates?.[0]?.content?.parts?.[0]?.text;
             if (textChunk) {
               aiContent += textChunk;
@@ -183,6 +190,25 @@ export function useChatSubmit({ chatId, selectedModel }: UseChatSubmitOptions) {
         } catch (e) {
           // Ignore final parse error
         }
+      }
+
+      if (finalUsageMetadata) {
+        const promptTokens = finalUsageMetadata.promptTokenCount ?? 0;
+        const completionTokens = finalUsageMetadata.candidatesTokenCount ?? 0;
+        
+        // Update assistant message tokens
+        chatStore.updateMessageTokens(currentChatId!, messageId, completionTokens);
+        
+        // Find user message added just before
+        const chat = chatStore.chats.find(c => c.id === currentChatId);
+        if (chat && chat.messages.length >= 2) {
+          const userMsg = chat.messages[chat.messages.length - 2];
+          if (userMsg && userMsg.role === 'user') {
+            chatStore.updateMessageTokens(currentChatId!, userMsg.id, promptTokens);
+          }
+        }
+        
+        chatStore.updateChatTokens(currentChatId!, promptTokens + completionTokens);
       }
 
       // Once done, extract code

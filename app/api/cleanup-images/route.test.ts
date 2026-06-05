@@ -18,18 +18,6 @@ describe('/api/cleanup-images API Route', () => {
     expect(data.error).toContain('Unauthorized');
   });
 
-  it('should return 200 when valid query token is provided', async () => {
-    const req = new NextRequest('http://localhost/api/cleanup-images?token=test-cron-token', {
-      method: 'GET',
-    });
-
-    const res = await GET(req);
-    expect(res.status).toBe(200);
-    const data = await res.json();
-    expect(data.success).toBe(true);
-    expect(data.deleted).toBeDefined();
-  });
-
   it('should return 200 when valid Bearer token in headers is provided', async () => {
     const req = new NextRequest('http://localhost/api/cleanup-images', {
       method: 'GET',

@@ -1,8 +1,7 @@
 import { createClient } from '@supabase/supabase-js';
-import { env } from './env';
 
-const supabaseUrl = env.supabase.url || '';
-const supabaseAnonKey = env.supabase.anonKey || '';
+const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL || '';
+const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || '';
 
 // Safely initialize Supabase client or fall back to a mock client to prevent build errors when config is missing
 export const supabase = (supabaseUrl && supabaseAnonKey)
