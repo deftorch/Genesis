@@ -20,9 +20,7 @@ const nextConfig = {
     optimizePackageImports: ['lucide-react'],
   },
   output: 'standalone',
-  eslint: {
-    ignoreDuringBuilds: true,
-  },
+
   typescript: {
     ignoreBuildErrors: false,
   },

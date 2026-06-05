@@ -2,31 +2,28 @@ import { NextRequest, NextResponse } from 'next/server';
 import { readdir, unlink, stat } from 'fs/promises';
 import { existsSync } from 'fs';
 import path from 'path';
+import { logger } from '@/lib/logger';
 
 export async function GET(request: NextRequest) {
   try {
     // Authenticate the request
     const authHeader = request.headers.get('authorization');
-    const url = new URL(request.url);
-    const queryToken = url.searchParams.get('token');
     
     const cronToken = process.env.CRON_TOKEN;
 
     if (!cronToken) {
-      console.error('[Cleanup] CRON_TOKEN environment variable is not set.');
+      logger.error('CRON_TOKEN environment variable is not set');
       return NextResponse.json(
         { error: 'Service not configured' },
         { status: 503 }
       );
     }
 
-    const isAuthorized = 
-      (authHeader === `Bearer ${cronToken}`) || 
-      (queryToken === cronToken);
+    const isAuthorized = authHeader === `Bearer ${cronToken}`;
 
     if (!isAuthorized) {
       return NextResponse.json(
-        { error: 'Unauthorized. Provide a valid Bearer token or token query parameter.' },
+        { error: 'Unauthorized. Provide a valid Bearer token.' },
         { status: 401 }
       );
     }
@@ -54,7 +51,7 @@ export async function GET(request: NextRequest) {
       if (fileAge > sevenDaysInMs) {
         await unlink(filePath);
         deletedCount++;
-        console.log(`Deleted old image: ${file}`);
+        logger.info('Deleted old image', { file });
       }
     }
 
@@ -64,7 +61,7 @@ export async function GET(request: NextRequest) {
       deleted: deletedCount,
     });
   } catch (error: any) {
-    console.error('Cleanup error:', error);
+    logger.error('Cleanup error', { error: error.message, stack: error.stack });
     return NextResponse.json(
       { error: error.message || 'Failed to cleanup images' },
       { status: 500 }

@@ -14,7 +14,39 @@ describe('/api/chat API Route', () => {
     const res = await POST(req);
     expect(res.status).toBe(400);
     const data = await res.json();
-    expect(data.error).toBe('No messages provided');
+    expect(data.error).toBe('Invalid request payload');
+  });
+
+  it('should return 400 when messages array has more than 100 items', async () => {
+    const req = new Request('http://localhost/api/chat', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ 
+        model: 'gemini-3-flash',
+        messages: Array(101).fill({ role: 'user', content: 'test' })
+      }),
+    });
+
+    const res = await POST(req);
+    expect(res.status).toBe(400);
+    const data = await res.json();
+    expect(data.error).toBe('Invalid request payload');
+  });
+
+  it('should return 400 when message content exceeds 50000 characters', async () => {
+    const req = new Request('http://localhost/api/chat', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ 
+        model: 'gemini-3-flash',
+        messages: [{ role: 'user', content: 'a'.repeat(50001) }]
+      }),
+    });
+
+    const res = await POST(req);
+    expect(res.status).toBe(400);
+    const data = await res.json();
+    expect(data.error).toBe('Invalid request payload');
   });
 
   it('should return 400 when the last message is empty', async () => {

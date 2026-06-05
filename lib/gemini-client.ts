@@ -1,4 +1,5 @@
 import { getGeminiApiKeys } from '@/config/constants';
+import { logger } from '@/lib/logger';
 
 /**
  * Helper to call Google Generative Language API (Gemini) with key rotation.
@@ -21,7 +22,7 @@ export async function callGeminiWithRotation(modelId: string, requestBody: any):
 
   for (let i = 0; i < apiKeys.length; i++) {
     const currentKey = apiKeys[i];
-    console.log(`[Gemini Client] Attempting request with key ${i + 1}/${apiKeys.length} for model ${modelId}...`);
+    logger.debug('Gemini request attempt', { keyIndex: i + 1, totalKeys: apiKeys.length, modelId });
     
     try {
       const response = await fetch(
@@ -43,9 +44,9 @@ export async function callGeminiWithRotation(modelId: string, requestBody: any):
 
       lastStatus = response.status;
       lastErrorText = await response.text();
-      console.error(`[Gemini Client] Key ${i + 1} failed (Status ${lastStatus}):`, lastErrorText);
+      logger.warn('Gemini key failed', { keyIndex: i + 1, status: lastStatus, error: lastErrorText });
     } catch (fetchError: any) {
-      console.error(`[Gemini Client] Fetch error with key ${i + 1}:`, fetchError.message);
+      logger.error('Gemini fetch error', { keyIndex: i + 1, error: fetchError.message });
       lastErrorText = fetchError.message;
       lastStatus = 500;
     }
@@ -93,7 +94,7 @@ export async function streamGeminiWithRotation(modelId: string, requestBody: any
 
   for (let i = 0; i < apiKeys.length; i++) {
     const currentKey = apiKeys[i];
-    console.log(`[Gemini Client] Attempting stream request with key ${i + 1}/${apiKeys.length} for model ${modelId}...`);
+    logger.debug('Gemini stream request attempt', { keyIndex: i + 1, totalKeys: apiKeys.length, modelId });
     
     try {
       const res = await fetch(
@@ -115,9 +116,9 @@ export async function streamGeminiWithRotation(modelId: string, requestBody: any
 
       lastStatus = res.status;
       lastErrorText = await res.text();
-      console.error(`[Gemini Client] Stream key ${i + 1} failed (Status ${lastStatus}):`, lastErrorText);
+      logger.warn('Gemini stream key failed', { keyIndex: i + 1, status: lastStatus, error: lastErrorText });
     } catch (fetchError: any) {
-      console.error(`[Gemini Client] Fetch error with stream key ${i + 1}:`, fetchError.message);
+      logger.error('Gemini stream fetch error', { keyIndex: i + 1, error: fetchError.message });
       lastErrorText = fetchError.message;
       lastStatus = 500;
     }

@@ -2,6 +2,16 @@ import { NextRequest, NextResponse } from 'next/server';
 import { API_CONFIG, IMAGE_ANALYSIS_MODELS } from '@/config/constants';
 import { callGeminiWithRotation } from '@/lib/gemini-client';
 import { analysisRateLimiter } from '@/lib/rate-limiter';
+import { logger } from '@/lib/logger';
+
+import * as z from 'zod';
+
+const GeminiAnalysisRequestSchema = z.object({
+  imageUrl: z.string().url().max(2000),
+  prompt: z.string().max(50000).optional(),
+  analysisType: z.string().optional(),
+  modelId: z.string().optional(),
+});
 
 export async function POST(request: NextRequest) {
   const ip = request.headers.get('x-forwarded-for')
@@ -18,17 +28,17 @@ export async function POST(request: NextRequest) {
   }
 
   try {
-    const body = await request.json();
-    const { imageUrl, prompt, analysisType, modelId = 'gemini-native' } = body;
+    const rawBody = await request.json();
+    const parseResult = GeminiAnalysisRequestSchema.safeParse(rawBody);
 
-
-
-    if (!imageUrl) {
+    if (!parseResult.success) {
       return NextResponse.json(
-        { error: 'No image URL provided' },
+        { error: 'Invalid request payload', details: parseResult.error.flatten() },
         { status: 400 }
       );
     }
+
+    const { imageUrl, prompt, analysisType, modelId = 'gemini-native' } = parseResult.data;
 
     // Find selected model
     const selectedModel = IMAGE_ANALYSIS_MODELS.find(m => m.id === modelId);
@@ -78,12 +88,16 @@ export async function POST(request: NextRequest) {
       const imageBuffer = await imageResponse.arrayBuffer();
       base64Image = Buffer.from(imageBuffer).toString('base64');
       
-      // Determine mime type from URL or default to jpeg
-      mimeType = imageUrl.toLowerCase().endsWith('.png') 
-        ? 'image/png' 
-        : imageUrl.toLowerCase().endsWith('.webp')
-        ? 'image/webp'
-        : 'image/jpeg';
+      // Determine MIME type from response header, with whitelist
+      const contentTypeHeader = imageResponse.headers.get('content-type');
+      const rawMime = contentTypeHeader?.split(';')[0].trim() || '';
+      
+      const SUPPORTED_MIMES = ['image/jpeg', 'image/png', 'image/webp', 'image/gif'];
+      mimeType = SUPPORTED_MIMES.includes(rawMime) ? rawMime : 'image/jpeg';
+
+      if (!SUPPORTED_MIMES.includes(rawMime)) {
+        logger.warn('Unrecognized MIME type in gemini-analysis, defaulting to image/jpeg', { rawMime });
+      }
     }
 
     // Build prompt based on analysis type
@@ -273,7 +287,7 @@ Analisis gambar dengan cermat dan berikan jawaban yang komprehensif.` :
 }`,
     };
 
-    const analysisPrompt = prompts[analysisType] || prompts['image-description'];
+    const analysisPrompt = (analysisType ? prompts[analysisType] : undefined) || prompts['image-description'];
 
     let result: string;
 
@@ -309,7 +323,7 @@ Analisis gambar dengan cermat dan berikan jawaban yang komprehensif.` :
       const data = await callGeminiWithRotation(selectedModel.modelId, requestBody);
 
       if (!data.candidates || !data.candidates[0]?.content?.parts?.[0]?.text) {
-        console.error('Invalid Gemini response structure:', data);
+        logger.error('Invalid Gemini response structure', { data: JSON.stringify(data).slice(0, 500) });
         throw new Error('Invalid response from Gemini API');
       }
 
@@ -360,9 +374,10 @@ Analisis gambar dengan cermat dan berikan jawaban yang komprehensif.` :
 
       if (!openRouterResponse.ok) {
         const errorText = await openRouterResponse.text();
-        console.error('OpenRouter API Error Response:', errorText);
-        console.error('OpenRouter Status:', openRouterResponse.status);
-        console.error('OpenRouter Headers:', JSON.stringify(Object.fromEntries(openRouterResponse.headers.entries()), null, 2));
+        logger.error('OpenRouter API error', {
+          status: openRouterResponse.status,
+          body: errorText.slice(0, 500),
+        });
         
         let errorMessage = `OpenRouter API error (${openRouterResponse.status})`;
         let userFriendlyMessage = '';
@@ -403,7 +418,7 @@ Analisis gambar dengan cermat dan berikan jawaban yang komprehensif.` :
 
 
       if (!data.choices || !data.choices[0]?.message?.content) {
-        console.error('Invalid OpenRouter response structure:', data);
+        logger.error('Invalid OpenRouter response structure', { data: JSON.stringify(data).slice(0, 500) });
         throw new Error('Invalid response from OpenRouter API');
       }
 
@@ -422,11 +437,7 @@ Analisis gambar dengan cermat dan berikan jawaban yang komprehensif.` :
       timestamp: new Date().toISOString(),
     });
   } catch (error: any) {
-    console.error('=== IMAGE ANALYSIS ERROR ===');
-    console.error('Error:', error);
-    console.error('Error Message:', error.message);
-    console.error('Error Stack:', error.stack);
-    console.error('============================');
+    logger.error('Image analysis error', { error: error.message, stack: error.stack });
     
     const errorMessage = error.message || '';
     const isQuota = errorMessage.toLowerCase().includes('quota') ||

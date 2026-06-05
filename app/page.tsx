@@ -4,7 +4,6 @@ import React, { useState, useEffect, useRef } from 'react';
 import { useChatStore } from '@/lib/store/chat-store';
 import { useSettingsStore } from '@/lib/store/settings-store';
 import { useToast } from '@/lib/store/toast-store';
-import { useAuthStore } from '@/lib/store/auth-store';
 import { useUIStore } from '@/lib/store/ui-store';
 
 import { AppShell } from '@/components/layout/AppShell';
@@ -12,7 +11,6 @@ import { Sidebar } from '@/components/layout/Sidebar';
 import { ChatPanel } from '@/components/chat/ChatPanel';
 import { ArtifactPanel } from '@/components/artifact/ArtifactPanel';
 
-import { AuthModal } from '@/components/auth/AuthModal';
 import { SettingsModal } from '@/components/settings/SettingsModal';
 
 import { useChatSubmit } from '@/hooks/useChatSubmit';
@@ -25,7 +23,6 @@ import { FILE_UPLOAD_CONFIG } from '@/config/constants';
 
 const GenesisApp = () => {
   const chatStore = useChatStore();
-  const { initialize: initializeAuth } = useAuthStore();
   const ui = useUIStore();
   const { preferences } = useSettingsStore();
   const { toast } = useToast();
@@ -51,11 +48,6 @@ const GenesisApp = () => {
   // State/controller references for submits & edits
   const [regeneratingId, setRegeneratingId] = useState<string | null>(null);
   const abortControllerRef = useRef<AbortController | null>(null);
-
-  // Initialize Auth
-  useEffect(() => {
-    initializeAuth();
-  }, [initializeAuth]);
 
   // Set greeting based on time of day
   useEffect(() => {
@@ -541,7 +533,6 @@ const GenesisApp = () => {
       </AppShell>
 
       <SettingsModal isOpen={ui.isSettingsOpen} onClose={() => ui.setIsSettingsOpen(false)} />
-      <AuthModal isOpen={ui.isAuthModalOpen} onClose={() => ui.setIsAuthModalOpen(false)} />
     </>
   );
 };

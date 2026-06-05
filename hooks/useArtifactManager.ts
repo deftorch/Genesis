@@ -11,12 +11,6 @@ export function useArtifactManager() {
     code: string,
     renderer: RendererType = 'p5',
   ) => {
-    const existing = chatStore.artifacts.find(
-      (a) => a.chatId === chatId && a.renderer === renderer,
-    );
-    if (existing) {
-      chatStore.deleteArtifact(existing.id);
-    }
     chatStore.addArtifact({
       chatId,
       chatTitle,

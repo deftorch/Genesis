@@ -17,7 +17,6 @@ import {
 
 import { useUIStore } from '@/lib/store/ui-store';
 import { useChatStore } from '@/lib/store/chat-store';
-import { useAuthStore } from '@/lib/store/auth-store';
 import { formatDate } from '@/lib/utils';
 
 interface SidebarProps {
@@ -37,7 +36,6 @@ export const Sidebar: React.FC<SidebarProps> = ({
 }) => {
   const ui = useUIStore();
   const chatStore = useChatStore();
-  const { user, signOut: handleSignOut } = useAuthStore();
 
   const [renamingChatId, setRenamingChatId] = useState<string | null>(null);
   const [renameValue, setRenameValue] = useState('');
@@ -292,59 +290,33 @@ export const Sidebar: React.FC<SidebarProps> = ({
 
             {/* Footer - Account & Settings */}
             <div className="border-t border-gray-200 dark:border-white/10 pt-3 flex flex-col gap-2 mt-auto">
-              {user ? (
-                <div className="flex items-center justify-between">
-                  <div className="flex items-center gap-2.5 min-w-0">
-                    <div className="w-8 h-8 rounded-full bg-[#1a6adf]/10 text-[#1a6adf] dark:bg-[#60aaff]/20 dark:text-[#60aaff] border border-[#1a6adf]/20 dark:border-[#60aaff]/40 flex items-center justify-center text-xs font-bold flex-shrink-0 select-none">
-                      {user.email?.[0].toUpperCase() || 'U'}
-                    </div>
-                    <div className="min-w-0">
-                      <p className="text-xs font-medium text-gray-800 dark:text-gray-200 truncate">
-                        {user.email}
-                      </p>
-                      <button
-                        onClick={handleSignOut}
-                        className="text-[10px] text-red-500 hover:underline cursor-pointer block text-left"
-                      >
-                        Sign Out
-                      </button>
-                    </div>
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-2.5 min-w-0">
+                  <div className="w-8 h-8 rounded-full bg-[#1a6adf]/10 text-[#1a6adf] dark:bg-[#60aaff]/20 dark:text-[#60aaff] border border-[#1a6adf]/20 dark:border-[#60aaff]/40 flex items-center justify-center text-xs font-bold flex-shrink-0 select-none">
+                    G
                   </div>
-                  <button
-                    onClick={() => {
-                      ui.setIsSettingsOpen(true);
-                      if (typeof window !== 'undefined' && window.innerWidth < 768) {
-                        ui.setSidebarOpen(false);
-                      }
-                    }}
-                    className="p-1.5 text-gray-400 hover:text-gray-700 dark:hover:text-white hover:bg-gray-100 dark:hover:bg-white/5 rounded-lg transition-all cursor-pointer flex-shrink-0"
-                    title="Settings"
-                  >
-                    <Settings size={18} />
-                  </button>
+                  <div className="min-w-0">
+                    <p className="text-xs font-medium text-gray-800 dark:text-gray-200 truncate">
+                      Local User
+                    </p>
+                    <span className="text-[10px] text-gray-400 block text-left">
+                      Free Plan
+                    </span>
+                  </div>
                 </div>
-              ) : (
-                <div className="flex items-center justify-between gap-2">
-                  <button
-                    onClick={() => ui.setIsAuthModalOpen(true)}
-                    className="flex-1 py-1.5 px-3 bg-[#1a6adf]/10 dark:bg-white/10 hover:bg-[#1a6adf]/20 dark:hover:bg-white/15 text-[#1a6adf] dark:text-white rounded-lg text-xs font-medium transition-colors cursor-pointer border border-[#1a6adf]/20 dark:border-white/10"
-                  >
-                    Sign In
-                  </button>
-                  <button
-                    onClick={() => {
-                      ui.setIsSettingsOpen(true);
-                      if (typeof window !== 'undefined' && window.innerWidth < 768) {
-                        ui.setSidebarOpen(false);
-                      }
-                    }}
-                    className="p-1.5 text-gray-400 hover:text-gray-700 dark:hover:text-white hover:bg-gray-100 dark:hover:bg-white/5 rounded-lg transition-all cursor-pointer flex-shrink-0"
-                    title="Settings"
-                  >
-                    <Settings size={18} />
-                  </button>
-                </div>
-              )}
+                <button
+                  onClick={() => {
+                    ui.setIsSettingsOpen(true);
+                    if (typeof window !== 'undefined' && window.innerWidth < 768) {
+                      ui.setSidebarOpen(false);
+                    }
+                  }}
+                  className="p-1.5 text-gray-400 hover:text-gray-700 dark:hover:text-white hover:bg-gray-100 dark:hover:bg-white/5 rounded-lg transition-all cursor-pointer flex-shrink-0"
+                  title="Settings"
+                >
+                  <Settings size={18} />
+                </button>
+              </div>
             </div>
           </div>
         ) : (
