@@ -111,20 +111,31 @@ const MermaidCanvas: React.FC<MermaidCanvasProps> = ({ code, width = 400, height
       if (event.data === 'downloadCanvas') {
         var svgElement = document.querySelector('svg');
         if (svgElement) {
-          var svgData = new XMLSerializer().serializeToString(svgElement);
+          var bbox = svgElement.getBBox();
+          var clone = svgElement.cloneNode(true);
+          
+          if (!clone.hasAttribute('viewBox')) {
+            clone.setAttribute('viewBox', bbox.x + ' ' + bbox.y + ' ' + bbox.width + ' ' + bbox.height);
+          }
+          
+          var targetWidth = Math.max(1, bbox.width * 2);
+          var targetHeight = Math.max(1, bbox.height * 2);
+          clone.setAttribute('width', targetWidth);
+          clone.setAttribute('height', targetHeight);
+          
+          var svgData = new XMLSerializer().serializeToString(clone);
           var svgBlob = new Blob([svgData], { type: 'image/svg+xml;charset=utf-8' });
           var url = URL.createObjectURL(svgBlob);
           var img = new Image();
           img.onload = function() {
             var canvas = document.createElement('canvas');
-            var bbox = svgElement.getBBox();
-            canvas.width = (bbox.width + 40) * 2;
-            canvas.height = (bbox.height + 40) * 2;
+            var padding = 40; // High-res padding
+            canvas.width = targetWidth + padding * 2;
+            canvas.height = targetHeight + padding * 2;
             var ctx = canvas.getContext('2d');
             ctx.fillStyle = '${isDark ? '#0b0f19' : '#ffffff'}';
             ctx.fillRect(0, 0, canvas.width, canvas.height);
-            ctx.scale(2, 2);
-            ctx.drawImage(img, 20, 20);
+            ctx.drawImage(img, padding, padding, targetWidth, targetHeight);
             URL.revokeObjectURL(url);
             var dataURL = canvas.toDataURL('image/png');
             window.parent.postMessage({ type: 'canvasData', dataURL: dataURL }, '*');

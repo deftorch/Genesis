@@ -128,21 +128,42 @@ const D3Canvas: React.FC<D3CanvasProps> = ({ code, width = 400, height = 400, on
       if (event.data === 'downloadCanvas') {
         const svgElement = document.querySelector('svg');
         if (svgElement) {
+          const rect = svgElement.getBoundingClientRect();
+          const clone = svgElement.cloneNode(true);
+          
+          if (!clone.hasAttribute('viewBox')) {
+            const w = clone.getAttribute('width') ? parseFloat(clone.getAttribute('width')) : rect.width;
+            const h = clone.getAttribute('height') ? parseFloat(clone.getAttribute('height')) : rect.height;
+            clone.setAttribute('viewBox', '0 0 ' + w + ' ' + h);
+          }
+          
+          const targetWidth = Math.max(1, rect.width * 2);
+          const targetHeight = Math.max(1, rect.height * 2);
+          clone.setAttribute('width', targetWidth);
+          clone.setAttribute('height', targetHeight);
+          
           // Convert SVG to PNG via canvas
-          const svgData = new XMLSerializer().serializeToString(svgElement);
+          const svgData = new XMLSerializer().serializeToString(clone);
           const svgBlob = new Blob([svgData], { type: 'image/svg+xml;charset=utf-8' });
           const url = URL.createObjectURL(svgBlob);
           const img = new Image();
           img.onload = function() {
             const canvas = document.createElement('canvas');
-            canvas.width = svgElement.getBoundingClientRect().width * 2;
-            canvas.height = svgElement.getBoundingClientRect().height * 2;
+            canvas.width = targetWidth;
+            canvas.height = targetHeight;
             const ctx = canvas.getContext('2d');
-            ctx.scale(2, 2);
+            
+            ctx.fillStyle = '${isDark ? '#0b0f19' : '#ffffff'}';
+            ctx.fillRect(0, 0, canvas.width, canvas.height);
+            
             ctx.drawImage(img, 0, 0);
             URL.revokeObjectURL(url);
             const dataURL = canvas.toDataURL('image/png');
             window.parent.postMessage({ type: 'canvasData', dataURL: dataURL }, '*');
+          };
+          img.onerror = function() {
+            URL.revokeObjectURL(url);
+            window.parent.postMessage({ type: 'canvasData', dataURL: null }, '*');
           };
           img.src = url;
         } else {

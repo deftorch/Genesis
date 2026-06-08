@@ -106,16 +106,29 @@ const SVGCanvas: React.FC<SVGCanvasProps> = ({ code, width = 400, height = 400, 
       if (event.data === 'downloadCanvas') {
         var svgElement = document.querySelector('svg');
         if (svgElement) {
-          var svgData = new XMLSerializer().serializeToString(svgElement);
+          var rect = svgElement.getBoundingClientRect();
+          var clone = svgElement.cloneNode(true);
+          
+          if (!clone.hasAttribute('viewBox')) {
+            var w = clone.getAttribute('width') ? parseFloat(clone.getAttribute('width')) : rect.width;
+            var h = clone.getAttribute('height') ? parseFloat(clone.getAttribute('height')) : rect.height;
+            clone.setAttribute('viewBox', '0 0 ' + w + ' ' + h);
+          }
+          
+          var targetWidth = Math.max(1, rect.width * 2);
+          var targetHeight = Math.max(1, rect.height * 2);
+          clone.setAttribute('width', targetWidth);
+          clone.setAttribute('height', targetHeight);
+          
+          var svgData = new XMLSerializer().serializeToString(clone);
           var svgBlob = new Blob([svgData], { type: 'image/svg+xml;charset=utf-8' });
           var url = URL.createObjectURL(svgBlob);
           var img = new Image();
           img.onload = function() {
             var canvas = document.createElement('canvas');
-            canvas.width = svgElement.getBoundingClientRect().width * 2;
-            canvas.height = svgElement.getBoundingClientRect().height * 2;
+            canvas.width = targetWidth;
+            canvas.height = targetHeight;
             var ctx = canvas.getContext('2d');
-            ctx.scale(2, 2);
             ctx.drawImage(img, 0, 0);
             URL.revokeObjectURL(url);
             var dataURL = canvas.toDataURL('image/png');
