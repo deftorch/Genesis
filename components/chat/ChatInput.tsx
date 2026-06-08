@@ -1,7 +1,7 @@
 'use client';
 
 import React from 'react';
-import { Send, Paperclip, X, Loader2, Link as LinkIcon } from 'lucide-react';
+import { Send, Paperclip, X, Loader2, Link as LinkIcon, FileText } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
 import { Input } from '@/components/ui/input';
@@ -60,7 +60,7 @@ export const ChatInput: React.FC<ChatInputProps> = ({
     // Validate files
     const validFiles = files.filter((file) => {
       if (!FILE_UPLOAD_CONFIG.acceptedTypes.includes(file.type)) {
-        error('Invalid file type', `${file.name} is not a supported image format`);
+        error('Invalid file type', `${file.name} is not a supported file format`);
         return false;
       }
       if (file.size > FILE_UPLOAD_CONFIG.maxSize) {
@@ -73,7 +73,7 @@ export const ChatInput: React.FC<ChatInputProps> = ({
     if (validFiles.length === 0) return;
 
     if (images.length + validFiles.length > FILE_UPLOAD_CONFIG.maxFiles) {
-      error('Too many files', `You can only upload up to ${FILE_UPLOAD_CONFIG.maxFiles} images`);
+      error('Too many files', `You can only upload up to ${FILE_UPLOAD_CONFIG.maxFiles} files`);
       return;
     }
 
@@ -107,7 +107,7 @@ export const ChatInput: React.FC<ChatInputProps> = ({
         setImages([...images, ...newImages]);
       }
     } catch (err) {
-      error('Upload failed', 'Failed to upload images. Please try again.');
+      error('Upload failed', 'Failed to upload files. Please try again.');
     } finally {
       setIsUploading(false);
       if (fileInputRef.current) {
@@ -193,19 +193,28 @@ export const ChatInput: React.FC<ChatInputProps> = ({
         <div className="flex flex-wrap gap-2 mb-3 px-1">
           {images.map((image) => (
             <div key={image.id} className="relative group">
-              <img
-                src={image.preview || image.url}
-                alt={image.name}
-                className="h-16 w-16 sm:h-20 sm:w-20 object-cover rounded-lg border-2 border-border"
-              />
+              {image.type.startsWith('image/') ? (
+                <img
+                  src={image.preview || image.url}
+                  alt={image.name}
+                  className="h-16 w-16 sm:h-20 sm:w-20 object-cover rounded-lg border-2 border-border bg-background"
+                />
+              ) : (
+                <div className="h-16 w-16 sm:h-20 sm:w-20 flex flex-col items-center justify-center bg-muted rounded-lg border-2 border-border overflow-hidden">
+                  <FileText className="h-6 w-6 sm:h-8 sm:w-8 text-muted-foreground mb-1" />
+                  <span className="text-[8px] sm:text-[10px] text-muted-foreground font-medium uppercase px-1 truncate w-full text-center">
+                    {image.name.split('.').pop()}
+                  </span>
+                </div>
+              )}
               <button
                 onClick={() => removeImage(image.id)}
-                className="absolute -top-1.5 -right-1.5 bg-destructive text-destructive-foreground rounded-full p-1 shadow-md opacity-0 group-hover:opacity-100 transition-opacity"
-                title="Remove image"
+                className="absolute -top-1.5 -right-1.5 bg-destructive text-destructive-foreground rounded-full p-1 shadow-md opacity-0 group-hover:opacity-100 transition-opacity z-10"
+                title="Remove file"
               >
                 <X className="h-3 w-3" />
               </button>
-              <div className="absolute bottom-0 left-0 right-0 bg-black/60 text-white text-[10px] px-1 py-0.5 rounded-b-lg truncate">
+              <div className="absolute bottom-0 left-0 right-0 bg-black/60 text-white text-[10px] px-1 py-0.5 rounded-b-lg truncate z-10">
                 {image.name}
               </div>
             </div>
@@ -230,7 +239,7 @@ export const ChatInput: React.FC<ChatInputProps> = ({
           size="icon"
           onClick={() => fileInputRef.current?.click()}
           disabled={disabled || isUploading || images.length >= FILE_UPLOAD_CONFIG.maxFiles}
-          title="Upload images from device"
+          title="Upload files from device"
           className="shrink-0 h-10 w-10"
         >
           {isUploading ? (
@@ -283,7 +292,7 @@ export const ChatInput: React.FC<ChatInputProps> = ({
       {/* Helper Text */}
       <div className="flex items-center justify-between mt-2 px-1 text-xs text-muted-foreground">
         <span>
-          {images.length > 0 && `${images.length}/${FILE_UPLOAD_CONFIG.maxFiles} images • `}
+          {images.length > 0 && `${images.length}/${FILE_UPLOAD_CONFIG.maxFiles} files • `}
           Press Enter to send, Shift+Enter for new line
         </span>
         {message.length > 0 && (

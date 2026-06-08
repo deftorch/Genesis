@@ -21,7 +21,8 @@ export function useChatSubmit({ chatId, selectedModel }: UseChatSubmitOptions) {
     return images.map((img) => {
       const url = img.url;
       if (url.startsWith('data:')) {
-        const match = url.match(/^data:(image\/\w+);base64,(.+)$/);
+        // Match any mime type: data:[<mediatype>];base64,<data>
+        const match = url.match(/^data:([^;]+);base64,(.+)$/);
         if (match) return { mimeType: match[1], base64: match[2] };
       }
       return { url };

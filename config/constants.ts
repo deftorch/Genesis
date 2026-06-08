@@ -149,8 +149,13 @@ export const ANALYSIS_TYPES = [
 export const FILE_UPLOAD_CONFIG = {
   maxSize: 10 * 1024 * 1024, // 10MB
   maxFiles: 5,
-  acceptedTypes: ['image/jpeg', 'image/png', 'image/webp', 'image/gif'],
-  acceptedExtensions: ['.jpg', '.jpeg', '.png', '.webp', '.gif'],
+  acceptedTypes: [
+    'image/jpeg', 'image/png', 'image/webp', 'image/gif',
+    'application/pdf', 
+    'application/msword', 'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+    'text/csv', 'text/plain', 'text/markdown'
+  ],
+  acceptedExtensions: ['.jpg', '.jpeg', '.png', '.webp', '.gif', '.pdf', '.doc', '.docx', '.csv', '.txt', '.md'],
 };
 
 // App Constants
