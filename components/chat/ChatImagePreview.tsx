@@ -1,5 +1,5 @@
 import React from 'react';
-import { X } from 'lucide-react';
+import { X, FileText } from 'lucide-react';
 import { ImageAttachment } from '@/types';
 
 interface ChatImagePreviewProps {
@@ -21,11 +21,20 @@ export const ChatImagePreview: React.FC<ChatImagePreviewProps> = ({
     <div className="flex flex-wrap gap-3 mb-3">
       {images.map((img) => (
         <div key={img.id} className="relative group">
-          <img
-            src={img.preview || img.url}
-            alt={img.name}
-            className={imageClassName}
-          />
+          {img.type?.startsWith('image/') ? (
+            <img
+              src={img.preview || img.url}
+              alt={img.name}
+              className={imageClassName}
+            />
+          ) : (
+            <div className={`flex flex-col items-center justify-center bg-muted overflow-hidden ${imageClassName}`}>
+              <FileText className="h-8 w-8 text-muted-foreground mb-1" />
+              <span className="text-xs text-muted-foreground font-medium uppercase px-2 truncate w-full text-center">
+                {img.name.split('.').pop()}
+              </span>
+            </div>
+          )}
           <button
             onClick={() => onRemoveImage(img.id)}
             className={buttonClassName}

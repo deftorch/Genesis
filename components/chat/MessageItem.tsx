@@ -10,6 +10,7 @@ import {
   ThumbsDown,
   ThumbsUp,
   Loader2,
+  FileText,
 } from 'lucide-react';
 import { useUIStore } from '@/lib/store/ui-store';
 import { formatMessageTimestamp } from '@/lib/utils';
@@ -218,15 +219,29 @@ export const MessageItem: React.FC<MessageItemProps> = ({
             ) : (
               <div>
                 {msg.images && msg.images.length > 0 && (
-                  <div className="mb-2">
-                    {msg.images.map((imgUrl: string, imgIdx: number) => (
-                      <img
-                        key={imgIdx}
-                        src={imgUrl}
-                        alt={`Attached image ${imgIdx + 1}`}
-                        className="max-w-[260px] max-h-[200px] object-cover rounded-xl border border-white/20 shadow-sm"
-                      />
-                    ))}
+                  <div className="mb-2 flex flex-wrap gap-2">
+                    {msg.images.map((img: any, imgIdx: number) => {
+                      const isObject = typeof img === 'object';
+                      const url = isObject ? (img.preview || img.url) : img;
+                      const isImage = isObject ? img.type?.startsWith('image/') : true;
+                      const name = isObject ? img.name : `Attached image ${imgIdx + 1}`;
+                      
+                      return isImage ? (
+                        <img
+                          key={imgIdx}
+                          src={url}
+                          alt={name}
+                          className="max-w-[260px] max-h-[200px] object-cover rounded-xl border border-white/20 shadow-sm bg-background"
+                        />
+                      ) : (
+                        <div key={imgIdx} className="flex flex-col items-center justify-center bg-muted rounded-xl border border-white/20 shadow-sm overflow-hidden w-24 h-24">
+                          <FileText className="h-8 w-8 text-muted-foreground mb-1" />
+                          <span className="text-[10px] text-muted-foreground font-medium uppercase px-2 truncate w-full text-center">
+                            {name.split('.').pop()}
+                          </span>
+                        </div>
+                      );
+                    })}
                   </div>
                 )}
                 {msg.content && (
