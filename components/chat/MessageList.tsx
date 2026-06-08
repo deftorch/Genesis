@@ -98,15 +98,52 @@ export const MessageList: React.FC<MessageListProps> = ({
         <div className="flex justify-start">
           <div className="bg-gray-100 dark:bg-white/5 p-4 rounded-xl">
             <div className="flex items-center gap-2">
-              <div className="w-2 h-2 bg-gray-600 dark:bg-gray-400 rounded-full animate-bounce" style={{ animationDelay: '0ms' }}></div>
-              <div className="w-2 h-2 bg-gray-600 dark:bg-gray-400 rounded-full animate-bounce" style={{ animationDelay: '150ms' }}></div>
-              <div className="w-2 h-2 bg-gray-600 dark:bg-gray-400 rounded-full animate-bounce" style={{ animationDelay: '300ms' }}></div>
-              <span className="ml-2 text-gray-600 dark:text-gray-400">Creating...</span>
+              <div className="flex items-center gap-1.5 mr-1">
+                <div className="w-2 h-2 bg-[#1a6adf] dark:bg-[#60aaff] rounded-full animate-bounce" style={{ animationDelay: '0ms' }}></div>
+                <div className="w-2 h-2 bg-[#1a6adf] dark:bg-[#60aaff] rounded-full animate-bounce" style={{ animationDelay: '150ms' }}></div>
+                <div className="w-2 h-2 bg-[#1a6adf] dark:bg-[#60aaff] rounded-full animate-bounce" style={{ animationDelay: '300ms' }}></div>
+              </div>
+              <LoadingPhrase />
             </div>
           </div>
         </div>
       )}
       <div ref={messagesEndRef} />
+    </div>
+  );
+};
+
+const loadingPhrases = [
+  'Analyzing request...',
+  'Gathering context...',
+  'Formulating solution...',
+  'Writing code...',
+  'Rendering visuals...',
+  'Finalizing details...'
+];
+
+const LoadingPhrase = () => {
+  const [idx, setIdx] = useState(0);
+
+  useEffect(() => {
+    const interval = setInterval(() => {
+      setIdx((prev) => (prev + 1) % loadingPhrases.length);
+    }, 2500);
+    return () => clearInterval(interval);
+  }, []);
+
+  return (
+    <div className="relative h-5 overflow-hidden w-40">
+      {loadingPhrases.map((phrase, i) => (
+        <span
+          key={i}
+          className={`absolute top-0 left-0 text-gray-600 dark:text-gray-400 text-sm font-medium transition-all duration-500 w-full whitespace-nowrap ${
+            i === idx ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-4'
+          }`}
+        >
+          {phrase}
+        </span>
+      ))}
     </div>
   );
 };
